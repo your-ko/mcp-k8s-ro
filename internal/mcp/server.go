@@ -81,5 +81,5 @@ func handleError(request JSONRPCRequest, err error) {
 }
 
 func Register(tool Tool) {
-
+	// TODO
 }
