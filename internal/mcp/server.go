@@ -37,7 +37,7 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      request.ID,
-			Result:  s.Tools,
+			Result:  map[string]any{"tools": s.Tools},
 		}, nil
 	}
 	return nil, nil // TODO: Improve
