@@ -1,0 +1,85 @@
+package mcp
+
+import (
+	"bufio"
+	"encoding/json"
+	"os"
+)
+
+type Server struct {
+	name    string
+	version string
+	Tools   []Tool
+}
+
+func New(name string, version string) *Server {
+	return &Server{
+		name:    name,
+		version: version,
+	}
+}
+
+func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
+	if request.ID == nil {
+		return nil, nil
+	}
+	if request.Method == "initialize" {
+		return &JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      request.ID,
+			Result: InitialisationResult{
+				ProtocolVersion: "2024-11-05",
+				ServerInfo:      ServerInfo{Name: s.name, Version: s.version},
+				Capabilities:    Capabilities{},
+			},
+		}, nil
+	} else if request.Method == "tools/list" {
+		return &JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      request.ID,
+			Result:  map[string]any{"tools": s.Tools},
+		}, nil
+	}
+	return nil, nil // TODO: Improve
+}
+
+func (s *Server) Start() {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+
+		request := JSONRPCRequest{}
+		err := json.Unmarshal(line, &request)
+		if err != nil {
+			handleError(request, err)
+			continue
+		}
+		response, err := s.Process(request)
+		if err != nil {
+			handleError(request, err)
+			continue
+		}
+		if response == nil {
+			continue
+		}
+		err = json.NewEncoder(os.Stdout).Encode(response)
+		if err != nil {
+			handleError(request, err)
+		}
+	}
+}
+
+func handleError(request JSONRPCRequest, err error) {
+	response := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      request.ID,
+		Error: &JSONRPCError{
+			Code:    -32603, // TODO: improve in the future, check JSON-RPC 2.0 standard error codes
+			Message: err.Error(),
+		}}
+	_ = json.NewEncoder(os.Stdout).Encode(response)
+}
+
+func Register(tool Tool) {
+	// TODO
+}
