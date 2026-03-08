@@ -9,7 +9,7 @@ import (
 type Server struct {
 	name    string
 	version string
-	Tools   []Tool
+	tools   []Tool
 }
 
 func New(name string, version string) *Server {
@@ -37,8 +37,32 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      request.ID,
-			Result:  map[string]any{"tools": s.Tools},
+			Result:  map[string]any{"tools": s.tools},
 		}, nil
+	} else if request.Method == "tools/call" {
+		var p struct {
+			Name      string          `json:"name"`
+			Arguments json.RawMessage `json:"arguments"`
+		}
+		err := json.Unmarshal(request.Params, &p)
+		if err != nil {
+			return nil, err
+		}
+		for _, tool := range s.tools {
+			if tool.Name() == p.Name {
+				result, err := tool.Execute(p.Arguments)
+				if err != nil {
+					return nil, err
+				}
+				return &JSONRPCResponse{
+					JSONRPC: "2.0",
+					ID:      request.ID,
+					Result: map[string]any{"content": map[string]string{
+						"type": "text", "text": result,
+					}},
+				}, nil
+			}
+		}
 	}
 	return nil, nil // TODO: Improve
 }
@@ -80,6 +104,6 @@ func handleError(request JSONRPCRequest, err error) {
 	_ = json.NewEncoder(os.Stdout).Encode(response)
 }
 
-func Register(tool Tool) {
-	// TODO
+func (s *Server) Register(tool Tool) {
+	s.tools = append(s.tools, tool)
 }
