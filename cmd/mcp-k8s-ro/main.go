@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
 
@@ -20,5 +21,6 @@ func main() {
 	slog.Info(fmt.Sprintf("Version: %s, BuildDate: %s, GitCommit: %s", Version, BuildDate, GitCommit))
 
 	server := mcp.New("mcp-k8s-ro", Version)
+	server.Register(k8s.GetNamespace{})
 	server.Start()
 }
