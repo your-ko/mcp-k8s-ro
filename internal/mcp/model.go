@@ -37,3 +37,20 @@ type ServerInfo struct {
 type Capabilities struct {
 	Tools struct{} `json:"tools"`
 }
+
+type InputSchema struct {
+	Type       string          `json:"type"`
+	Properties json.RawMessage `json:"properties"`
+	Required   []string        `json:"required,omitempty"`
+}
+
+type Property struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+}
+
+type ToolDefinition struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	InputSchema InputSchema `json:"inputSchema"`
+}
