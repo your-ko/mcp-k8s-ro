@@ -1,4 +1,4 @@
-package k8s
+package main
 
 import (
 	"flag"
@@ -10,7 +10,8 @@ import (
 )
 
 func getConfig() (*rest.Config, error) {
-	// TODO: Rethink this
+	// TODO: Rethink creation from kubeconfig.
+	// TODO: it should read only current profile
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
@@ -21,7 +22,7 @@ func getConfig() (*rest.Config, error) {
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return config, nil
 }
