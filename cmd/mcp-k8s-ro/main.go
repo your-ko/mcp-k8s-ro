@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
@@ -18,6 +19,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	slog.SetDefault(logger)
 	slog.Info("MCP K8S RO starting...")
+	updateMetadata()
 	slog.Info(fmt.Sprintf("Version: %s, BuildDate: %s, GitCommit: %s", Version, BuildDate, GitCommit))
 
 	config, err := getConfig()
@@ -34,4 +36,13 @@ func main() {
 	server := mcp.New("mcp-k8s-ro", Version)
 	server.Register(k8s.NewListResources(k8sClient))
 	server.Start()
+}
+
+func updateMetadata() {
+	if Version == "" {
+		Version = "dev"
+	}
+	if BuildDate == "" {
+		BuildDate = time.Now().Format(time.RFC822)
+	}
 }
