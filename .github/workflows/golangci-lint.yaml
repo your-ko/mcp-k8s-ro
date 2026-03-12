@@ -1,0 +1,42 @@
+name: golangci-lint
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - cmd/**
+      - internal/**
+      - pkg/**
+      - ./go.mod
+      - ./go.sum
+  pull_request:
+    paths:
+      - cmd/**
+      - internal/**
+      - pkg/**
+      - ./go.mod
+      - ./go.sum
+
+
+permissions:
+  contents: read
+  # Optional: allow read access to pull requests. Use with `only-new-issues` option.
+  # pull-requests: read
+
+jobs:
+  golangci:
+    name: lint
+    runs-on:  ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: actions/setup-go@v6.2.0
+        with:
+          go-version-file: './go.mod'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9.2.0
+        with:
+          # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
+          version: v2.10.1
