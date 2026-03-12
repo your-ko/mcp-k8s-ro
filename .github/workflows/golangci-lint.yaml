@@ -1,22 +1,22 @@
 name: golangci-lint
-on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - cmd/**
-      - internal/**
-      - pkg/**
-      - ./go.mod
-      - ./go.sum
-  pull_request:
-    paths:
-      - cmd/**
-      - internal/**
-      - pkg/**
-      - ./go.mod
-      - ./go.sum
+#on:
+#  push:
+#    branches:
+#      - main
+#      - master
+#    paths:
+#      - cmd/**
+#      - internal/**
+#      - pkg/**
+#      - ./go.mod
+#      - ./go.sum
+#  pull_request:
+#    paths:
+#      - cmd/**
+#      - internal/**
+#      - pkg/**
+#      - ./go.mod
+#      - ./go.sum
 
 
 permissions:

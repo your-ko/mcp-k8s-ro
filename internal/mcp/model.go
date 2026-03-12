@@ -4,6 +4,13 @@ import (
 	"encoding/json"
 )
 
+type Tool interface {
+	Name() string
+	Description() string
+	InputSchema() InputSchema
+	Execute(params json.RawMessage) (string, error)
+}
+
 type JSONRPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      any             `json:"id"`

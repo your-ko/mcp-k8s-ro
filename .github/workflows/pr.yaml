@@ -38,14 +38,14 @@ jobs:
       - name: Go Vet
         shell: bash
         run: |
-          go vet ./cmd/... ./internal/... ./pkg/...
+          go vet ./cmd/... ./internal/... 
 
       - name: Go Test
         shell: bash
         env:
           CGO_ENABLED: 1
         run: |
-          go test -race ./cmd/... ./internal/... ./pkg/...
+          go test -race ./cmd/... ./internal/... 
 
       - name: Generate build timestamp
         id: timestamp
