@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -69,6 +70,7 @@ func formatList(list []output) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	//fmt.Fprintf(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
 }
 
@@ -84,13 +86,42 @@ func normaliseList(list *unstructured.UnstructuredList) []output {
 	result := make([]output, 0)
 	for _, item := range list.Items {
 		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
+		containersStatus, _ := getContainerInfo(item)
 		result = append(result, output{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Status:    status,
-			Ready:     "", // TODO
+			Ready:     containersStatus,
 			Created:   item.GetCreationTimestamp().UTC().Format("2006-01-02"),
 		})
 	}
 	return result
+}
+
+func getContainerInfo(item unstructured.Unstructured) (string, error) {
+	if item.GetKind() != "Pod" {
+		return "", nil
+	}
+
+	containerStatuses, found, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses")
+	if err != nil {
+		// TODO: Do I really need to return err?
+		return "", err
+	}
+	if !found {
+		return "", nil
+	}
+	total := len(containerStatuses)
+	ready := 0
+	for _, cs := range containerStatuses {
+		container, ok := cs.(map[string]any)
+		if !ok {
+			continue
+		}
+		if isReady, ok := container["ready"].(bool); ok && isReady {
+			ready++
+		}
+	}
+
+	return fmt.Sprintf("%v/%v", ready, total), nil
 }
