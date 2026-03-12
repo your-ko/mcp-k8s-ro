@@ -58,5 +58,5 @@ func (tool ListResources) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return formatList(filter(list))
+	return formatList(normaliseList(list))
 }

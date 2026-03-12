@@ -74,16 +74,21 @@ func formatList(list []output) (string, error) {
 
 type output struct {
 	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace"`
-	Created   string `yaml:"created"`
+	Namespace string `yaml:"namespace,omitempty"`
+	Status    string `yaml:"status,omitempty"`
+	Ready     string `yaml:"ready,omitempty"`
+	Created   string `yaml:"created,omitempty"`
 }
 
-func filter(list *unstructured.UnstructuredList) []output {
+func normaliseList(list *unstructured.UnstructuredList) []output {
 	result := make([]output, 0)
 	for _, item := range list.Items {
+		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
 		result = append(result, output{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
+			Status:    status,
+			Ready:     "", // TODO
 			Created:   item.GetCreationTimestamp().UTC().Format("2006-01-02"),
 		})
 	}
