@@ -3,6 +3,7 @@ package mcp
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"os"
 )
 
@@ -57,14 +58,12 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 				return &JSONRPCResponse{
 					JSONRPC: "2.0",
 					ID:      request.ID,
-					Result: map[string]any{"content": map[string]string{
-						"type": "text", "text": result,
-					}},
+					Result:  map[string]any{"content": []map[string]string{{"type": "text", "text": result}}},
 				}, nil
 			}
 		}
 	}
-	return nil, nil // TODO: Improve
+	return nil, errors.New("not implemented yet")
 }
 
 func (s *Server) Start() {
