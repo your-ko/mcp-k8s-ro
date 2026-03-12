@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -70,7 +71,7 @@ func formatList(list []output) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//fmt.Fprintf(os.Stderr, string(yamlBytes))
+	fmt.Fprintf(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
 }
 
