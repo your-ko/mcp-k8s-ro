@@ -252,24 +252,28 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 
 	result := make([]eventOutput, 0)
 	for _, event := range list.Items {
-		count := event.Series.Count
-		if count == 0 {
+		count := int32(1)
+		if event.Series != nil {
+			count = event.Series.Count
+		} else if event.DeprecatedCount > 0 {
 			count = event.DeprecatedCount
 		}
-		lastTime := event.Series.LastObservedTime
-		if lastTime == nil {
-			lastTime := event.DeprecatedLastTimestamp
+		lastTime := event.EventTime.Time
+		if event.Series != nil {
+			lastTime = event.Series.LastObservedTime.Time
+		} else if !event.DeprecatedLastTimestamp.IsZero() {
+			lastTime = event.DeprecatedLastTimestamp.Time
 		}
 		result = append(result, eventOutput{
-			Name:      event.Name,
-			Namespace: event.Namespace,
-			Kind:      event.Kind,
+			Name:      event.Regarding.Name,
+			Namespace: event.Regarding.Namespace,
+			Kind:      event.Regarding.Kind,
 			Reason:    event.Reason,
 			Message:   event.Note,
 			Type:      event.Type,
 			Count:     count,
 			FirstTime: event.EventTime.Time,
-			LastTime:  lastTime.Time,
+			LastTime:  lastTime,
 		})
 	}
 
