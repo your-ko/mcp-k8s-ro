@@ -30,7 +30,7 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
               "namespace": {"type":"string","description":"Namespace"},
  			  "tailLines": {"type":"integer","description":"Number of lines to tail"},
           }`),
-		Required: []string{"name", "namespace"},
+		Required: []string{"name"},
 	}
 
 }
