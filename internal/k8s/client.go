@@ -1,10 +1,14 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 
 	"gopkg.in/yaml.v3"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -12,6 +16,7 @@ import (
 	"k8s.io/client-go/discovery"
 	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 )
@@ -20,6 +25,7 @@ type Client struct {
 	dynamic   dynamic.Interface
 	discovery *discovery.DiscoveryClient
 	mapper    meta.RESTMapper // resolves "pods" → GVR
+	clientSet *kubernetes.Clientset
 }
 
 func NewClient(config *rest.Config) (*Client, error) {
@@ -34,7 +40,11 @@ func NewClient(config *rest.Config) (*Client, error) {
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(
 		memory.NewMemCacheClient(disc),
 	)
-	return &Client{dynamic: dyn, discovery: disc, mapper: mapper}, nil
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{dynamic: dyn, discovery: disc, mapper: mapper, clientSet: clientSet}, nil
 }
 
 func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool, error) {
@@ -136,4 +146,22 @@ func getContainerInfo(item unstructured.Unstructured) (string, error) {
 	}
 
 	return fmt.Sprintf("%v/%v", ready, total), nil
+}
+
+func (c *Client) getLogs(podName string, namespace string, tailLines int64) (string, error) {
+	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{TailLines: &tailLines})
+	podLogs, err := request.Stream(context.TODO())
+	if err != nil {
+		return "", err
+	}
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		return "", errors.New("error in copy from podLogs to buf")
+	}
+	str := buf.String()
+
+	return str, nil
 }

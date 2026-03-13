@@ -9,7 +9,7 @@ tidy:
 build:
 	go build -ldflags \
     "-X main.GitCommit=test -X main.BuildDate=test -X main.Version=POC" \
-    -o bin/mcp-k8s-ro ./cmd/mcp-k8s-ro/main.go
+    -o bin/mcp-k8s-ro ./cmd/mcp-k8s-ro/
 
 run: build
 	./$(BINARY)
