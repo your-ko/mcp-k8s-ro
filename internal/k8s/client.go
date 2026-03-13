@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
@@ -45,6 +47,21 @@ func NewClient(config *rest.Config) (*Client, error) {
 		return nil, err
 	}
 	return &Client{dynamic: dyn, discovery: disc, mapper: mapper, clientSet: clientSet}, nil
+}
+
+type listResourcesOutput struct {
+	Name      string `yaml:"name"`
+	Namespace string `yaml:"namespace,omitempty"`
+	Status    string `yaml:"status,omitempty"`
+	Ready     string `yaml:"ready,omitempty"`
+	Created   string `yaml:"created,omitempty"`
+}
+
+type apiResourcesOutput struct {
+	Name       string `yaml:"name"`
+	Kind       string `yaml:"kind"`
+	Group      string `yaml:"group"`
+	Namespaced bool   `yaml:"namespaced"`
 }
 
 func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool, error) {
@@ -87,29 +104,21 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	return c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 }
 
-func formatList(list []output) (string, error) {
+func formatResourcesList(list []listResourcesOutput) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
 	}
-	//fmt.Fprintf(os.Stderr, string(yamlBytes))
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
 }
 
-type output struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace,omitempty"`
-	Status    string `yaml:"status,omitempty"`
-	Ready     string `yaml:"ready,omitempty"`
-	Created   string `yaml:"created,omitempty"`
-}
-
-func normaliseList(list *unstructured.UnstructuredList) []output {
-	result := make([]output, 0)
+func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
+	result := make([]listResourcesOutput, 0)
 	for _, item := range list.Items {
 		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
 		containersStatus, _ := getContainerInfo(item)
-		result = append(result, output{
+		result = append(result, listResourcesOutput{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Status:    status,
@@ -164,4 +173,60 @@ func (c *Client) getLogs(podName string, namespace string, tailLines int64) (str
 	str := buf.String()
 
 	return str, nil
+}
+
+var skipGroups = map[string]bool{
+	"authentication.k8s.io":  true,
+	"authorization.k8s.io":   true,
+	"apiregistration.k8s.io": true, // apiservices
+	"coordination.k8s.io":    true, // leases (internal leader election)
+}
+
+func (c *Client) getApiResources(groupFilter string) (string, error) {
+	resources, err := c.discovery.ServerPreferredResources()
+	if err != nil {
+		return "", err
+	}
+	result := make([]apiResourcesOutput, 0)
+	for _, apiGroup := range resources {
+		for _, r := range apiGroup.APIResources {
+			if strings.Contains(r.Name, "/") {
+				// Any resource name containing / is a subresource — pods/log, pods/exec, pods/status, deployments/scale etc.
+				// We don't need them
+				continue
+			}
+			group := r.Group
+			if groupFilter != "" && group != groupFilter {
+				// filter out
+				continue
+			}
+			if group == "" {
+				group = apiGroup.GroupVersion
+			}
+			groupVersion := strings.Split(apiGroup.GroupVersion, "/")[0]
+			if skipGroups[groupVersion] {
+				// no need to return them as well
+				continue
+			}
+			fmt.Fprintln(os.Stderr, apiGroup.GroupVersion)
+
+			result = append(result, apiResourcesOutput{
+				Name:       r.Name,
+				Kind:       r.Kind,
+				Group:      group,
+				Namespaced: r.Namespaced,
+			})
+		}
+	}
+
+	return formatApiList(result)
+}
+
+func formatApiList(list []apiResourcesOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
+	return string(yamlBytes), nil
 }
