@@ -205,7 +205,7 @@ func (c *Client) get() (string, error) {
 			result = append(result, apiResourcesOutput{
 				Name:       r.Name,
 				Kind:       r.Kind,
-				Group:      r.Group,
+				Group:      group,
 				Namespaced: r.Namespaced,
 			})
 		}
