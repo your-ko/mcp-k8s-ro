@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
@@ -173,6 +174,13 @@ func (c *Client) getLogs(podName string, namespace string, tailLines int64) (str
 	return str, nil
 }
 
+var skipGroups = map[string]bool{
+	"authentication.k8s.io":  true,
+	"authorization.k8s.io":   true,
+	"apiregistration.k8s.io": true, // apiservices
+	"coordination.k8s.io":    true, // leases (internal leader election)
+}
+
 func (c *Client) get() (string, error) {
 	resources, err := c.discovery.ServerPreferredResources()
 	if err != nil {
@@ -181,6 +189,15 @@ func (c *Client) get() (string, error) {
 	result := make([]apiResourcesOutput, 0)
 	for _, apiGroup := range resources {
 		for _, r := range apiGroup.APIResources {
+			if strings.Contains(r.Name, "/") {
+				// Any resource name containing / is a subresource — pods/log, pods/exec, pods/status, deployments/scale etc.
+				// We don't need them
+				continue
+			}
+			if skipGroups[apiGroup.GroupVersion] {
+				// no need to return them as well
+				continue
+			}
 			group := r.Group
 			if group == "" {
 				group = apiGroup.GroupVersion
