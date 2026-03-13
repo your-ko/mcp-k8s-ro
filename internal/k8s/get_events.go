@@ -14,25 +14,37 @@ func NewEventGetter(client *Client) EventGetter {
 	return EventGetter{client: client}
 }
 
-func (e EventGetter) Name() string {
+func (tool EventGetter) Name() string {
 	return "k8s_get_events"
 }
 
-func (e EventGetter) Description() string {
+func (tool EventGetter) Description() string {
 	return "Returns K8s events"
 }
 
-func (e EventGetter) InputSchema() mcp.InputSchema {
+func (tool EventGetter) InputSchema() mcp.InputSchema {
 	return mcp.InputSchema{
 		Type: "object",
 		Properties: json.RawMessage(`{
-              "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"}
+              "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"},
+              "limit": {"type":"integer","description":"Number of lines to fetch"},
           }`),
 		Required: []string{},
 	}
 }
 
-func (e EventGetter) Execute(params json.RawMessage) (string, error) {
-	//TODO implement me
-	panic("implement me")
+func (tool EventGetter) Execute(params json.RawMessage) (string, error) {
+	var p struct {
+		Namespace string `json:"namespace"`
+		Limit     int64  `json:"limit"`
+	}
+	err := json.Unmarshal(params, &p)
+	if err != nil {
+		return "", err
+	}
+	if p.Limit == 0 {
+		// if not provided then show at least something
+		p.Limit = 100
+	}
+	return tool.client.getEvents(p.Namespace, p.Limit)
 }

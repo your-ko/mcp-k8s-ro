@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
@@ -62,6 +63,18 @@ type apiResourcesOutput struct {
 	Kind       string `yaml:"kind"`
 	Group      string `yaml:"group"`
 	Namespaced bool   `yaml:"namespaced"`
+}
+
+type eventOutput struct {
+	Name      string    `yaml:"name"`
+	Namespace string    `yaml:"namespace"`
+	Kind      string    `yaml:"kind"`
+	Reason    string    `yaml:"reason"`
+	Message   string    `yaml:"message"`
+	Type      string    `yaml:"type"`
+	Count     int32     `yaml:"count"`
+	FirstTime time.Time `yaml:"firstTime"`
+	LastTime  time.Time `yaml:"lastTime"`
 }
 
 func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool, error) {
@@ -223,6 +236,47 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 }
 
 func formatApiList(list []apiResourcesOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
+	return string(yamlBytes), nil
+}
+
+func (c *Client) getEvents(namespace string, limit int64) (string, error) {
+	list, err := c.clientSet.EventsV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	result := make([]eventOutput, 0)
+	for _, event := range list.Items {
+		count := event.Series.Count
+		if count == 0 {
+			count = event.DeprecatedCount
+		}
+		lastTime := event.Series.LastObservedTime
+		if lastTime == nil {
+			lastTime := event.DeprecatedLastTimestamp
+		}
+		result = append(result, eventOutput{
+			Name:      event.Name,
+			Namespace: event.Namespace,
+			Kind:      event.Kind,
+			Reason:    event.Reason,
+			Message:   event.Note,
+			Type:      event.Type,
+			Count:     count,
+			FirstTime: event.EventTime.Time,
+			LastTime:  lastTime.Time,
+		})
+	}
+
+	return formatEventList(result)
+}
+
+func formatEventList(list []eventOutput) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
