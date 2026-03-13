@@ -35,6 +35,7 @@ func main() {
 
 	server := mcp.New("mcp-k8s-ro", Version)
 	server.Register(k8s.NewListResources(k8sClient))
+	server.Register(k8s.NewDescribeResource(k8sClient))
 	server.Start()
 }
 
