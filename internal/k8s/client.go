@@ -152,7 +152,7 @@ func (c *Client) getLogs(podName string, namespace string, tailLines int64) (str
 	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{TailLines: &tailLines})
 	podLogs, err := request.Stream(context.TODO())
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	defer podLogs.Close()
 
