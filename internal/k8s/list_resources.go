@@ -14,9 +14,12 @@ import (
 //	{"resource": "pods", "namespace": "kube-system"}
 //
 //	Output:
-//	NAME                          NAMESPACE    CREATED
-//	coredns-xxx                   kube-system  2025-02-12
-//	coredns-yyy                   kube-system  2025-02-12
+//	- name: kube-proxy-5ppkb
+//    namespace: kube-system
+//    status: Running
+//    ready: 1/1
+//    created: "2026-03-09"
+
 type ListResources struct {
 	client *Client
 }
