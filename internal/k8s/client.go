@@ -3,7 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -66,7 +65,7 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 	return c.dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
 }
 
-func (c *Client) DescribeResources(ctx context.Context, name string, resource string, namespace string) (*unstructured.Unstructured, error) {
+func (c *Client) GetResource(ctx context.Context, name string, resource string, namespace string) (*unstructured.Unstructured, error) {
 	gvr, namespaced, err := c.resolveGVR(resource)
 	if err != nil {
 		return nil, err
@@ -83,7 +82,7 @@ func formatList(list []output) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(os.Stderr, string(yamlBytes))
+	//fmt.Fprintf(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
 }
 

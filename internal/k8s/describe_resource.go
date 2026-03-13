@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
+	"gopkg.in/yaml.v3"
 )
 
 type DescribeResource struct {
@@ -45,11 +46,13 @@ func (tool DescribeResource) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resource, err := tool.client.DescribeResources(context.TODO(), p.Name, p.Resource, p.Namespace)
+	resource, err := tool.client.GetResource(context.TODO(), p.Name, p.Resource, p.Namespace)
 	if err != nil {
 		return "", err
 	}
-	_ = resource
-
-	return "", nil
+	yamlBytes, err := yaml.Marshal(resource.Object)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
 }
