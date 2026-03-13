@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
@@ -27,6 +28,7 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
 		Type: "object",
 		Properties: json.RawMessage(`{
               "name":  {"type":"string","description":"Pod name"},
+              "resource":  {"type":"string","description":"Resource type. Should be 'pod'"},
               "namespace": {"type":"string","description":"Namespace"}
           }`),
 		Required: []string{"resource"},
@@ -36,6 +38,7 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
 
 func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 	var p struct {
+		Name      string `json:"name"`
 		Resource  string `json:"resource"`
 		Namespace string `json:"namespace"`
 	}
@@ -44,6 +47,8 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	// TODO: implement me
-	return "", err
+	if p.Resource != "pod" {
+		return "", fmt.Errorf("can't fetch logs for resource '%s'. It should be 'pod' instead", p.Resource)
+	}
+	return tool.client.getLogs(p.Name, p.Namespace), nil
 }
