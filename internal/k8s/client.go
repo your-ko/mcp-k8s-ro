@@ -3,6 +3,7 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -147,20 +148,20 @@ func getContainerInfo(item unstructured.Unstructured) (string, error) {
 	return fmt.Sprintf("%v/%v", ready, total), nil
 }
 
-func (c *Client) getLogs(podName string, namespace string) string {
+func (c *Client) getLogs(podName string, namespace string) (string, error) {
 	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{})
 	podLogs, err := request.Stream(context.TODO())
 	if err != nil {
-		return ""
+		return "", nil
 	}
 	defer podLogs.Close()
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
-		return "error in copy from podLogs to buf"
+		return "", errors.New("error in copy from podLogs to buf")
 	}
 	str := buf.String()
 
-	return str
+	return str, nil
 }
