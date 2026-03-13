@@ -47,6 +47,21 @@ func NewClient(config *rest.Config) (*Client, error) {
 	return &Client{dynamic: dyn, discovery: disc, mapper: mapper, clientSet: clientSet}, nil
 }
 
+type listResourcesOutput struct {
+	Name      string `yaml:"name"`
+	Namespace string `yaml:"namespace,omitempty"`
+	Status    string `yaml:"status,omitempty"`
+	Ready     string `yaml:"ready,omitempty"`
+	Created   string `yaml:"created,omitempty"`
+}
+
+type apiResourcesOutput struct {
+	Name       string `yaml:"name"`
+	Kind       string `yaml:"kind"`
+	Group      string `yaml:"group"`
+	Namespaced bool   `yaml:"namespaced"`
+}
+
 func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool, error) {
 	partialResource := schema.GroupVersionResource{Resource: resource}
 	gvr, err := c.mapper.ResourceFor(partialResource)
@@ -87,7 +102,7 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	return c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 }
 
-func formatList(list []output) (string, error) {
+func formatResourcesList(list []listResourcesOutput) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
@@ -96,20 +111,12 @@ func formatList(list []output) (string, error) {
 	return string(yamlBytes), nil
 }
 
-type output struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace,omitempty"`
-	Status    string `yaml:"status,omitempty"`
-	Ready     string `yaml:"ready,omitempty"`
-	Created   string `yaml:"created,omitempty"`
-}
-
-func normaliseList(list *unstructured.UnstructuredList) []output {
-	result := make([]output, 0)
+func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
+	result := make([]listResourcesOutput, 0)
 	for _, item := range list.Items {
 		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
 		containersStatus, _ := getContainerInfo(item)
-		result = append(result, output{
+		result = append(result, listResourcesOutput{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Status:    status,
@@ -164,4 +171,33 @@ func (c *Client) getLogs(podName string, namespace string, tailLines int64) (str
 	str := buf.String()
 
 	return str, nil
+}
+
+func (c *Client) get() (string, error) {
+	resources, err := c.discovery.ServerPreferredResources()
+	if err != nil {
+		return "", err
+	}
+	result := make([]apiResourcesOutput, 0)
+	for _, apiGroup := range resources {
+		for _, r := range apiGroup.APIResources {
+			result = append(result, apiResourcesOutput{
+				Name:       r.Name,
+				Kind:       r.Kind,
+				Group:      r.Group,
+				Namespaced: r.Namespaced,
+			})
+		}
+	}
+
+	return formatApiList(result)
+}
+
+func formatApiList(list []apiResourcesOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Fprintf(os.Stderr, string(yamlBytes))
+	return string(yamlBytes), nil
 }

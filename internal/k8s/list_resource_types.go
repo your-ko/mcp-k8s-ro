@@ -31,6 +31,5 @@ func (tool ListResourceTypes) InputSchema() mcp.InputSchema {
 }
 
 func (tool ListResourceTypes) Execute(params json.RawMessage) (string, error) {
-	//TODO implement me
-	panic("implement me")
+	return tool.client.get()
 }
