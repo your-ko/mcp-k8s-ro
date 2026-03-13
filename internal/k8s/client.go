@@ -181,6 +181,10 @@ func (c *Client) get() (string, error) {
 	result := make([]apiResourcesOutput, 0)
 	for _, apiGroup := range resources {
 		for _, r := range apiGroup.APIResources {
+			group := r.Group
+			if group == "" {
+				group = apiGroup.GroupVersion
+			}
 			result = append(result, apiResourcesOutput{
 				Name:       r.Name,
 				Kind:       r.Kind,
