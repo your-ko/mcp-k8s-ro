@@ -194,14 +194,16 @@ func (c *Client) get() (string, error) {
 				// We don't need them
 				continue
 			}
-			if skipGroups[apiGroup.GroupVersion] {
-				// no need to return them as well
-				continue
-			}
 			group := r.Group
 			if group == "" {
 				group = apiGroup.GroupVersion
 			}
+			groupVersion := strings.Split(apiGroup.GroupVersion, "/")[0]
+			if skipGroups[groupVersion] {
+				// no need to return them as well
+				continue
+			}
+
 			result = append(result, apiResourcesOutput{
 				Name:       r.Name,
 				Kind:       r.Kind,
