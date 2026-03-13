@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
@@ -14,15 +15,15 @@ func NewDescribeResource(client *Client) DescribeResource {
 	return DescribeResource{client: client}
 }
 
-func (d DescribeResource) Name() string {
+func (tool DescribeResource) Name() string {
 	return "k8s_describe_resource"
 }
 
-func (d DescribeResource) Description() string {
+func (tool DescribeResource) Description() string {
 	return "Describe any Kubernetes resource"
 }
 
-func (d DescribeResource) InputSchema() mcp.InputSchema {
+func (tool DescribeResource) InputSchema() mcp.InputSchema {
 	return mcp.InputSchema{
 		Type: "object",
 		Properties: json.RawMessage(`{
@@ -34,7 +35,21 @@ func (d DescribeResource) InputSchema() mcp.InputSchema {
 	}
 }
 
-func (d DescribeResource) Execute(params json.RawMessage) (string, error) {
-	//TODO implement me
-	panic("implement me")
+func (tool DescribeResource) Execute(params json.RawMessage) (string, error) {
+	var p struct {
+		Name      string `json:"name"`
+		Resource  string `json:"resource"`
+		Namespace string `json:"namespace"`
+	}
+	err := json.Unmarshal(params, &p)
+	if err != nil {
+		return "", err
+	}
+	resource, err := tool.client.DescribeResources(context.TODO(), p.Name, p.Resource, p.Namespace)
+	if err != nil {
+		return "", err
+	}
+	_ = resource
+
+	return "", nil
 }

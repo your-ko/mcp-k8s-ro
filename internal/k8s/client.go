@@ -66,6 +66,18 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 	return c.dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
 }
 
+func (c *Client) DescribeResources(ctx context.Context, name string, resource string, namespace string) (*unstructured.Unstructured, error) {
+	gvr, namespaced, err := c.resolveGVR(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	if namespaced && namespace != "" {
+		return c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	}
+	return c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+}
+
 func formatList(list []output) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
