@@ -10,7 +10,7 @@ type ListResourceTypes struct {
 	client *Client
 }
 
-func NewListResourceTypes(client *Client) ListResourceTypes {
+func NewResourceTypesLister(client *Client) ListResourceTypes {
 	return ListResourceTypes{client: client}
 }
 
