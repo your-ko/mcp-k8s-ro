@@ -24,12 +24,21 @@ func (tool ListResourceTypes) Description() string {
 
 func (tool ListResourceTypes) InputSchema() mcp.InputSchema {
 	return mcp.InputSchema{
-		Type:       "object",
-		Properties: json.RawMessage(`{}`),
-		Required:   []string{},
+		Type: "object",
+		Properties: json.RawMessage(`{
+              "group":  {"type":"string","description":"API group filter parameter"},
+          }`),
+		Required: []string{},
 	}
 }
 
 func (tool ListResourceTypes) Execute(params json.RawMessage) (string, error) {
-	return tool.client.get()
+	var p struct {
+		ApiGroup string `json:"group"`
+	}
+	err := json.Unmarshal(params, &p)
+	if err != nil {
+		return "", err
+	}
+	return tool.client.getApiResources(p.ApiGroup)
 }

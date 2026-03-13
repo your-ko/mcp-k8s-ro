@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -108,7 +109,7 @@ func formatResourcesList(list []listResourcesOutput) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//fmt.Fprintf(os.Stderr, string(yamlBytes))
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
 }
 
@@ -181,7 +182,7 @@ var skipGroups = map[string]bool{
 	"coordination.k8s.io":    true, // leases (internal leader election)
 }
 
-func (c *Client) get() (string, error) {
+func (c *Client) getApiResources(groupFilter string) (string, error) {
 	resources, err := c.discovery.ServerPreferredResources()
 	if err != nil {
 		return "", err
@@ -195,6 +196,10 @@ func (c *Client) get() (string, error) {
 				continue
 			}
 			group := r.Group
+			if groupFilter != "" && group != groupFilter {
+				// filter out
+				continue
+			}
 			if group == "" {
 				group = apiGroup.GroupVersion
 			}
@@ -203,6 +208,7 @@ func (c *Client) get() (string, error) {
 				// no need to return them as well
 				continue
 			}
+			fmt.Fprintln(os.Stderr, apiGroup.GroupVersion)
 
 			result = append(result, apiResourcesOutput{
 				Name:       r.Name,
@@ -221,6 +227,6 @@ func formatApiList(list []apiResourcesOutput) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//fmt.Fprintf(os.Stderr, string(yamlBytes))
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
 }
