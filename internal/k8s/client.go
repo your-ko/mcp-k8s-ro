@@ -148,8 +148,8 @@ func getContainerInfo(item unstructured.Unstructured) (string, error) {
 	return fmt.Sprintf("%v/%v", ready, total), nil
 }
 
-func (c *Client) getLogs(podName string, namespace string) (string, error) {
-	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{})
+func (c *Client) getLogs(podName string, namespace string, tailLines int64) (string, error) {
+	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{TailLines: &tailLines})
 	podLogs, err := request.Stream(context.TODO())
 	if err != nil {
 		return "", nil

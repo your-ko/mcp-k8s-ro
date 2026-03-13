@@ -27,7 +27,8 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
 		Type: "object",
 		Properties: json.RawMessage(`{
               "name":  {"type":"string","description":"Pod name"},
-              "namespace": {"type":"string","description":"Namespace"}
+              "namespace": {"type":"string","description":"Namespace"},
+ 			  "tailLines": {"type":"integer","description":"Number of lines to tail"},
           }`),
 		Required: []string{"resource"},
 	}
@@ -38,11 +39,12 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 	var p struct {
 		Name      string `json:"name"`
 		Namespace string `json:"namespace"`
+		TailLines int64  `json:"tailLines"`
 	}
 	err := json.Unmarshal(params, &p)
 	if err != nil {
 		return "", err
 	}
 
-	return tool.client.getLogs(p.Name, p.Namespace), nil
+	return tool.client.getLogs(p.Name, p.Namespace, p.TailLines)
 }
