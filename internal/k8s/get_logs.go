@@ -30,7 +30,7 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
               "namespace": {"type":"string","description":"Namespace"},
  			  "tailLines": {"type":"integer","description":"Number of lines to tail"},
           }`),
-		Required: []string{"resource"},
+		Required: []string{"name", "namespace"},
 	}
 
 }
@@ -44,6 +44,11 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 	err := json.Unmarshal(params, &p)
 	if err != nil {
 		return "", err
+	}
+
+	if p.TailLines == 0 {
+		// if not provided then show at least something
+		p.TailLines = 100
 	}
 
 	return tool.client.getLogs(p.Name, p.Namespace, p.TailLines)
