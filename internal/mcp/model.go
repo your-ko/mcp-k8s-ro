@@ -37,8 +37,10 @@ type InitialisationResult struct {
 }
 
 type ServerInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	ClusterName string `json:"clusterName"`
+	ContextName string `json:"contextName"`
 }
 
 type Capabilities struct {

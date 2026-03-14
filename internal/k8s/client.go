@@ -22,7 +22,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Client struct {
@@ -34,7 +33,7 @@ type Client struct {
 	clusterName string
 }
 
-func NewClient(config *rest.Config) (*Client, error) {
+func NewClient(config *rest.Config, contextName string, clusterName string) (*Client, error) {
 	dyn, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -50,14 +49,6 @@ func NewClient(config *rest.Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	apiConfig, err := rules.Load()
-	if err != nil {
-		return nil, err
-	}
-	contextName := apiConfig.CurrentContext
-	clusterName := apiConfig.Contexts[contextName].Cluster
 
 	return &Client{
 		dynamic:     dyn,
@@ -263,7 +254,7 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 		return !result[left].LastTime.Before(&result[right].LastTime.MicroTime)
 	})
 
-	return formatEventList(result)
+	return formatEventList(result, c.header())
 }
 
 func formatEventList(list []eventOutput, header string) (string, error) {

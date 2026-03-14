@@ -8,15 +8,19 @@ import (
 )
 
 type Server struct {
-	name    string
-	version string
-	tools   []Tool
+	name        string
+	version     string
+	contextName string
+	clusterName string
+	tools       []Tool
 }
 
-func New(name string, version string) *Server {
+func New(name string, version string, contextName string, clusterName string) *Server {
 	return &Server{
-		name:    name,
-		version: version,
+		name:        name,
+		version:     version,
+		contextName: contextName,
+		clusterName: clusterName,
 	}
 }
 
@@ -30,7 +34,7 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 			ID:      request.ID,
 			Result: InitialisationResult{
 				ProtocolVersion: "2024-11-05",
-				ServerInfo:      ServerInfo{Name: s.name, Version: s.version},
+				ServerInfo:      ServerInfo{Name: s.name, Version: s.version, ClusterName: s.clusterName, ContextName: s.contextName},
 				Capabilities:    Capabilities{},
 			},
 		}, nil
