@@ -69,25 +69,6 @@ func NewClient(config *rest.Config) (*Client, error) {
 	}, nil
 }
 
-type apiResourcesOutput struct {
-	Name       string `yaml:"name"`
-	Kind       string `yaml:"kind"`
-	Group      string `yaml:"group"`
-	Namespaced bool   `yaml:"namespaced"`
-}
-
-type eventOutput struct {
-	Name      string   `yaml:"name"`
-	Namespace string   `yaml:"namespace"`
-	Kind      string   `yaml:"kind"`
-	Reason    string   `yaml:"reason"`
-	Message   string   `yaml:"message"`
-	Type      string   `yaml:"type"`
-	Count     int32    `yaml:"count"`
-	FirstTime yamlTime `yaml:"firstTime"`
-	LastTime  yamlTime `yaml:"lastTime"`
-}
-
 func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool, error) {
 	partialResource := schema.GroupVersionResource{Resource: resource}
 	gvr, err := c.mapper.ResourceFor(partialResource)
@@ -116,13 +97,8 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 	return c.dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
 }
 
-func (c *Client) formatResourcesList(list []listResourcesOutput) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	header := fmt.Sprintf("# context: %s | cluster: %s\n", c.contextName, c.clusterName)
-	return header + string(yamlBytes), nil
+func (c *Client) header() string {
+	return fmt.Sprintf("# context: %s | cluster: %s\n", c.contextName, c.clusterName)
 }
 
 func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
@@ -243,7 +219,7 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 		}
 	}
 
-	return formatApiList(result)
+	return formatApiList(result, c.header())
 }
 
 func (c *Client) getEvents(namespace string, limit int64) (string, error) {
@@ -290,22 +266,28 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 	return formatEventList(result)
 }
 
-func formatEventList(list []eventOutput) (string, error) {
+func formatEventList(list []eventOutput, header string) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
 	}
-	//fmt.Fprintln(os.Stderr, string(yamlBytes))
-	return string(yamlBytes), nil
+	return header + string(yamlBytes), nil
 }
 
-func formatApiList(list []apiResourcesOutput) (string, error) {
+func formatApiList(list []apiResourcesOutput, header string) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
 	}
-	//fmt.Fprintln(os.Stderr, string(yamlBytes))
-	return string(yamlBytes), nil
+	return header + string(yamlBytes), nil
+}
+
+func formatResourcesList(list []listResourcesOutput, header string) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	return header + string(yamlBytes), nil
 }
 
 type yamlTime struct {

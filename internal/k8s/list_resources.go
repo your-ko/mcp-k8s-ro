@@ -61,7 +61,7 @@ func (tool ListResources) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tool.client.formatResourcesList(normaliseList(list))
+	return formatResourcesList(normaliseList(list), tool.client.header())
 }
 
 type listResourcesOutput struct {
@@ -70,5 +70,4 @@ type listResourcesOutput struct {
 	Status    string `yaml:"status,omitempty"`
 	Ready     string `yaml:"ready,omitempty"`
 	Created   string `yaml:"created,omitempty"`
-	Context   string `yaml:"context"`
 }
