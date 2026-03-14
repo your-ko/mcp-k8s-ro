@@ -20,8 +20,8 @@ func (tool EventGetter) Name() string {
 }
 
 func (tool EventGetter) Description() string {
-	return "Returns list of K8s events." +
-		"This server is pinned to context '" + tool.client.Header() + "'. " +
+	return "Returns list of K8s events. " +
+		"This server is pinned to context '" + tool.client.ContextSummary() + "'. " +
 		"Restart the server to switch clusters."
 }
 

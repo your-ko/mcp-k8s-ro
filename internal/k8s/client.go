@@ -98,6 +98,10 @@ func (c *Client) Header() string {
 	return fmt.Sprintf("# context: %s | cluster: %s\n", c.contextName, c.clusterName)
 }
 
+func (c *Client) ContextSummary() string {
+	return fmt.Sprintf("%s (%s)", c.contextName, c.clusterName)
+}
+
 func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 	result := make([]listResourcesOutput, 0)
 	for _, item := range list.Items {
