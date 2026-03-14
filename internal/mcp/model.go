@@ -19,10 +19,12 @@ type JSONRPCRequest struct {
 }
 
 type JSONRPCResponse struct {
-	JSONRPC string        `json:"jsonrpc"`
-	ID      any           `json:"id"`
-	Result  any           `json:"result,omitempty"`
-	Error   *JSONRPCError `json:"error,omitempty"`
+	JSONRPC     string        `json:"jsonrpc"`
+	ID          any           `json:"id"`
+	Result      any           `json:"result,omitempty"`
+	Error       *JSONRPCError `json:"error,omitempty"`
+	ContextName string        `json:"contextName"`
+	ClusterName string        `json:"clusterName"`
 }
 
 type JSONRPCError struct {

@@ -23,9 +23,7 @@ import (
 //    created: "2026-03-09"
 
 type ListResources struct {
-	client      *Client
-	contextName string
-	clusterName string
+	client *Client
 }
 
 func NewResourcesLister(client *Client) ListResources {
@@ -74,7 +72,6 @@ type listResourcesOutput struct {
 	Status    string `yaml:"status,omitempty"`
 	Ready     string `yaml:"ready,omitempty"`
 	Created   string `yaml:"created,omitempty"`
-	Context   string `yaml:"context"`
 }
 
 func formatResourcesList(list []listResourcesOutput) (string, error) {
@@ -97,7 +94,6 @@ func (tool ListResources) normaliseList(list *unstructured.UnstructuredList) []l
 			Status:    status,
 			Ready:     containersStatus,
 			Created:   item.GetCreationTimestamp().UTC().Format("2006-01-02"),
-			Context:   tool.contextName,
 		})
 	}
 	return result

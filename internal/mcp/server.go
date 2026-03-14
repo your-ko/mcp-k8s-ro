@@ -5,19 +5,33 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Server struct {
-	name    string
-	version string
-	tools   []Tool
+	name        string
+	version     string
+	tools       []Tool
+	contextName string
+	clusterName string
 }
 
-func New(name string, version string) *Server {
-	return &Server{
-		name:    name,
-		version: version,
+func New(name string, version string) (*Server, error) {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	apiConfig, err := rules.Load()
+	if err != nil {
+		return nil, err
 	}
+	contextName := apiConfig.CurrentContext
+	clusterName := apiConfig.Contexts[contextName].Cluster
+
+	return &Server{
+		name:        name,
+		version:     version,
+		contextName: contextName,
+		clusterName: clusterName,
+	}, nil
 }
 
 func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
@@ -65,9 +79,11 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 					return nil, err
 				}
 				return &JSONRPCResponse{
-					JSONRPC: "2.0",
-					ID:      request.ID,
-					Result:  map[string]any{"content": []map[string]string{{"type": "text", "text": result}}},
+					JSONRPC:     "2.0",
+					ID:          request.ID,
+					ContextName: s.contextName,
+					ClusterName: s.clusterName,
+					Result:      map[string]any{"content": []map[string]string{{"type": "text", "text": result}}},
 				}, nil
 			}
 		}
