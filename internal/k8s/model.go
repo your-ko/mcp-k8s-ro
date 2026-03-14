@@ -34,10 +34,17 @@ type eventOutput struct {
 }
 
 type podTopOutput struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace"`
-	CPU       string `yaml:"cpu"`
-	Memory    string `yaml:"memory"`
+	Name       string      `yaml:"name"`
+	Namespace  string      `yaml:"namespace"`
+	CPU        int64       `yaml:"cpu"`
+	Memory     int64       `yaml:"memory"`
+	Containers []Container `yaml:"containers"`
+}
+
+type Container struct {
+	Name   string `yaml:"name"`
+	CPU    int64  `yaml:"cpu"`
+	Memory int64  `yaml:"memory"`
 }
 
 type yamlTime struct {

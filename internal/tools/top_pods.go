@@ -36,6 +36,12 @@ func (tool PodTopper) InputSchema() mcp.InputSchema {
 }
 
 func (tool PodTopper) Execute(params json.RawMessage) (string, error) {
-	//TODO implement me
-	panic("implement me")
+	var p struct {
+		Namespace string `json:"namespace"`
+	}
+	err := json.Unmarshal(params, &p)
+	if err != nil {
+		return "", err
+	}
+	return tool.client.TopPods(p.Namespace)
 }

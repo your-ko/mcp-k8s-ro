@@ -22,15 +22,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 type Client struct {
-	dynamic     dynamic.Interface
-	discovery   *discovery.DiscoveryClient
-	mapper      meta.RESTMapper // resolves "pods" → GVR
-	clientSet   *kubernetes.Clientset
-	contextName string
-	clusterName string
+	dynamic      dynamic.Interface
+	discovery    *discovery.DiscoveryClient
+	mapper       meta.RESTMapper // resolves "pods" → GVR
+	clientSet    *kubernetes.Clientset
+	contextName  string
+	clusterName  string
+	metricClient *metrics.Clientset
 }
 
 func NewClient(config *rest.Config, contextName string, clusterName string) (*Client, error) {
@@ -49,14 +51,19 @@ func NewClient(config *rest.Config, contextName string, clusterName string) (*Cl
 	if err != nil {
 		return nil, err
 	}
+	metricClient, err := metrics.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Client{
-		dynamic:     dyn,
-		discovery:   disc,
-		mapper:      mapper,
-		clientSet:   clientSet,
-		contextName: contextName,
-		clusterName: clusterName,
+		dynamic:      dyn,
+		discovery:    disc,
+		mapper:       mapper,
+		clientSet:    clientSet,
+		contextName:  contextName,
+		clusterName:  clusterName,
+		metricClient: metricClient,
 	}, nil
 }
 
@@ -283,6 +290,42 @@ func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 	})
 
 	return formatEventList(result, c.Header())
+}
+
+func (c *Client) TopPods(namespace string) (string, error) {
+	metrics, err := c.metricClient.MetricsV1beta1().PodMetricses(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	metricsOutput := make([]podTopOutput, 0, len(metrics.Items))
+	for _, podMetrics := range metrics.Items {
+		podTop := podTopOutput{
+			Name:      podMetrics.Name,
+			Namespace: podMetrics.Namespace,
+		}
+
+		topContainers := make([]Container, 0, len(podMetrics.Containers))
+		for _, cMetrics := range podMetrics.Containers {
+			topContainers = append(topContainers, Container{
+				Name:   cMetrics.Name,
+				CPU:    cMetrics.Usage.Cpu().Value(),
+				Memory: cMetrics.Usage.Memory().Value(),
+			})
+			podTop.CPU += cMetrics.Usage.Cpu().Value()
+			podTop.Memory += cMetrics.Usage.Memory().Value()
+		}
+		podTop.Containers = topContainers
+		metricsOutput = append(metricsOutput, podTop)
+	}
+	return formatTopPodList(metricsOutput, c.Header())
+}
+
+func formatTopPodList(list []podTopOutput, header string) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	return header + string(yamlBytes), nil
 }
 
 func formatEventList(list []eventOutput, header string) (string, error) {
