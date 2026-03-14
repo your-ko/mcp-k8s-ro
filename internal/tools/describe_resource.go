@@ -22,7 +22,7 @@ func (tool DescribeResource) Name() string {
 
 func (tool DescribeResource) Description() string {
 	return "Describe any Kubernetes resource. " +
-		"This server is pinned to context '" + tool.client.Header() + "'. " +
+		"This server is pinned to context '" + tool.client.ContextSummary() + "'. " +
 		"Restart the server to switch clusters."
 }
 
