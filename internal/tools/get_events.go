@@ -1,16 +1,17 @@
-package k8s
+package tools
 
 import (
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
 
 type EventGetter struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewEventGetter(client *Client) EventGetter {
+func NewEventGetter(client *k8s.Client) EventGetter {
 	return EventGetter{client: client}
 }
 
@@ -19,17 +20,18 @@ func (tool EventGetter) Name() string {
 }
 
 func (tool EventGetter) Description() string {
-	return "Returns K8s events"
+	return "Returns list of K8s events." +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool EventGetter) InputSchema() mcp.InputSchema {
 	return mcp.InputSchema{
 		Type: "object",
 		Properties: json.RawMessage(`{
-              "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"},
-              "limit": {"type":"integer","description":"Number of lines to fetch"}
-          }`),
-		Required: []string{},
+             "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"},
+             "limit": {"type":"integer","description":"Number of lines to fetch. 0 or none is to fetch everything"}
+         }`),
 	}
 }
 
@@ -42,9 +44,5 @@ func (tool EventGetter) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if p.Limit == 0 {
-		// if not provided then show at least something
-		p.Limit = 100
-	}
-	return tool.client.getEvents(p.Namespace, p.Limit)
+	return tool.client.GetEvents(p.Namespace, p.Limit)
 }

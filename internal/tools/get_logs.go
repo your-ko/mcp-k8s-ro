@@ -1,16 +1,17 @@
-package k8s
+package tools
 
 import (
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
 
 type LogGetter struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewLogGetter(client *Client) LogGetter {
+func NewLogGetter(client *k8s.Client) LogGetter {
 	return LogGetter{client: client}
 }
 
@@ -19,20 +20,21 @@ func (tool LogGetter) Name() string {
 }
 
 func (tool LogGetter) Description() string {
-	return "Returns logs for a given pod"
+	return "Returns logs for a given pod. " +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool LogGetter) InputSchema() mcp.InputSchema {
 	return mcp.InputSchema{
 		Type: "object",
 		Properties: json.RawMessage(`{
-              "name":  {"type":"string","description":"Pod name"},
-              "namespace": {"type":"string","description":"Namespace"},
- 			  "tailLines": {"type":"integer","description":"Number of lines to tail"}
-          }`),
+             "name":  {"type":"string","description":"Pod name"},
+             "namespace": {"type":"string","description":"Namespace"},
+			  "tailLines": {"type":"integer","description":"Number of lines to tail"}
+         }`),
 		Required: []string{"name"},
 	}
-
 }
 
 func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
@@ -46,10 +48,5 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	if p.TailLines == 0 {
-		// if not provided then show at least something
-		p.TailLines = 100
-	}
-
-	return tool.client.getLogs(p.Name, p.Namespace, p.TailLines)
+	return tool.client.GetLogs(p.Name, p.Namespace, p.TailLines)
 }

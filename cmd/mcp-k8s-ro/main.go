@@ -8,6 +8,8 @@ import (
 
 	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
+	"github.com/your-ko/mcp-k8s-ro/internal/tools"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var GitCommit string
@@ -24,21 +26,35 @@ func main() {
 
 	config, err := getConfig()
 	if err != nil {
-		slog.With("error", err)
+		slog.Error("failed to read kubeconfig", "error", err)
 		os.Exit(1)
 	}
-	k8sClient, err := k8s.NewClient(config)
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	apiConfig, err := rules.Load()
+	if err != nil {
+		slog.Error("failed to load kubeconfig", "error", err)
+		os.Exit(1)
+	}
+	contextName := apiConfig.CurrentContext
+	ctx, ok := apiConfig.Contexts[contextName]
+	if !ok {
+		slog.Error("current context not found in kubeconfig", "context", contextName)
+		os.Exit(1)
+	}
+	clusterName := ctx.Cluster
+
+	k8sClient, err := k8s.NewClient(config, contextName, clusterName)
 	if err != nil {
 		slog.With("error", err).Error("failed to create k8s client")
 		os.Exit(1)
 	}
 
-	server := mcp.New("mcp-k8s-ro", Version)
-	server.Register(k8s.NewResourcesLister(k8sClient))
-	server.Register(k8s.NewResourceDescriber(k8sClient))
-	server.Register(k8s.NewResourceTypesLister(k8sClient))
-	server.Register(k8s.NewLogGetter(k8sClient))
-	server.Register(k8s.NewEventGetter(k8sClient))
+	server := mcp.New("mcp-k8s-ro", Version, contextName, clusterName)
+	server.Register(tools.NewResourcesLister(k8sClient))
+	server.Register(tools.NewResourceDescriber(k8sClient))
+	server.Register(tools.NewResourceTypesLister(k8sClient))
+	server.Register(tools.NewLogGetter(k8sClient))
+	server.Register(tools.NewEventGetter(k8sClient))
 	server.Start()
 }
 
