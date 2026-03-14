@@ -165,6 +165,10 @@ func getContainerInfo(item unstructured.Unstructured) (string, error) {
 }
 
 func (c *Client) GetLogs(podName string, namespace string, tailLines int64) (string, error) {
+	opts := &v1.PodLogOptions{}
+	if tailLines > 0 {
+		opts.TailLines = &tailLines
+	}
 	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{TailLines: &tailLines})
 	podLogs, err := request.Stream(context.TODO())
 	if err != nil {
@@ -230,8 +234,11 @@ func (c *Client) GetApiResources(groupFilter string) (string, error) {
 }
 
 func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
-	// TODO: fix counter.0 is to fetch everything
-	list, err := c.clientSet.EventsV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
+	opts := metav1.ListOptions{}
+	if limit > 0 {
+		opts.Limit = limit
+	}
+	list, err := c.clientSet.EventsV1().Events(namespace).List(context.TODO(), opts)
 	if err != nil {
 		return "", err
 	}
