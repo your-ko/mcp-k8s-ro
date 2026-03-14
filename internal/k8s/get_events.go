@@ -19,7 +19,9 @@ func (tool EventGetter) Name() string {
 }
 
 func (tool EventGetter) Description() string {
-	return "Returns K8s events"
+	return "Returns list of K8s events." +
+		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool EventGetter) InputSchema() mcp.InputSchema {

@@ -21,7 +21,9 @@ func (tool DescribeResource) Name() string {
 }
 
 func (tool DescribeResource) Description() string {
-	return "Describe any Kubernetes resource"
+	return "Describe any Kubernetes resource." +
+		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool DescribeResource) InputSchema() mcp.InputSchema {

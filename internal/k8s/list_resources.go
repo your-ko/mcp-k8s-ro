@@ -33,7 +33,9 @@ func (tool ListResources) Name() string {
 }
 
 func (tool ListResources) Description() string {
-	return "List any Kubernetes resource by type"
+	return "List any Kubernetes resource by type. " +
+		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool ListResources) InputSchema() mcp.InputSchema {

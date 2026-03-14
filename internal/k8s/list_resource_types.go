@@ -19,7 +19,9 @@ func (tool ListResourceTypes) Name() string {
 }
 
 func (tool ListResourceTypes) Description() string {
-	return "Lists all available resource types via discovery API"
+	return "Lists all available resource types via discovery API. " +
+		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool ListResourceTypes) InputSchema() mcp.InputSchema {

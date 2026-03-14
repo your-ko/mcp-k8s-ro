@@ -19,7 +19,9 @@ func (tool LogGetter) Name() string {
 }
 
 func (tool LogGetter) Description() string {
-	return "Returns logs for a given pod"
+	return "Returns logs for a given pod. " +
+		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool LogGetter) InputSchema() mcp.InputSchema {
