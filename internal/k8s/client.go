@@ -246,6 +246,10 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 		} else if !event.DeprecatedLastTimestamp.IsZero() {
 			lastTime = event.DeprecatedLastTimestamp.Time
 		}
+		firstTime := event.EventTime.Time
+		if firstTime.IsZero() {
+			firstTime = event.DeprecatedFirstTimestamp.Time
+		}
 		result = append(result, eventOutput{
 			Name:      event.Regarding.Name,
 			Namespace: event.Regarding.Namespace,
@@ -254,7 +258,7 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 			Message:   event.Note,
 			Type:      event.Type,
 			Count:     count,
-			FirstTime: yamlTime{MicroTime: metav1.MicroTime{Time: event.EventTime.Time}},
+			FirstTime: yamlTime{MicroTime: metav1.MicroTime{Time: firstTime}},
 			LastTime:  yamlTime{MicroTime: metav1.MicroTime{Time: lastTime}},
 		})
 	}
