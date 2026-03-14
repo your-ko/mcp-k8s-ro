@@ -31,7 +31,6 @@ func (tool ListResourceTypes) InputSchema() mcp.InputSchema {
 		Properties: json.RawMessage(`{
              "group":  {"type":"string","description":"API group filter parameter"}
          }`),
-		Required: []string{},
 	}
 }
 

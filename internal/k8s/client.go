@@ -297,10 +297,3 @@ func formatResourcesList(list []listResourcesOutput, header string) (string, err
 	}
 	return header + string(yamlBytes), nil
 }
-
-func (t yamlTime) MarshalYAML() (interface{}, error) {
-	if t.IsZero() {
-		return "", nil
-	}
-	return t.UTC().Format(time.DateTime), nil
-}

@@ -35,7 +35,6 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
          }`),
 		Required: []string{"name"},
 	}
-
 }
 
 func (tool LogGetter) Execute(params json.RawMessage) (string, error) {

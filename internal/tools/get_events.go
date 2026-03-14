@@ -32,7 +32,6 @@ func (tool EventGetter) InputSchema() mcp.InputSchema {
              "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"},
              "limit": {"type":"integer","description":"Number of lines to fetch. 0 or none is to fetch everything"}
          }`),
-		Required: []string{},
 	}
 }
 

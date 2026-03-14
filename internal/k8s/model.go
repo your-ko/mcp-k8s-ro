@@ -1,6 +1,10 @@
 package k8s
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 type listResourcesOutput struct {
 	Name      string `yaml:"name"`
@@ -31,4 +35,11 @@ type eventOutput struct {
 
 type yamlTime struct {
 	metav1.MicroTime
+}
+
+func (t yamlTime) MarshalYAML() (interface{}, error) {
+	if t.IsZero() {
+		return "", nil
+	}
+	return t.UTC().Format(time.DateTime), nil
 }
