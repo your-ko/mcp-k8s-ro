@@ -50,14 +50,6 @@ func NewClient(config *rest.Config) (*Client, error) {
 	return &Client{dynamic: dyn, discovery: disc, mapper: mapper, clientSet: clientSet}, nil
 }
 
-type listResourcesOutput struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace,omitempty"`
-	Status    string `yaml:"status,omitempty"`
-	Ready     string `yaml:"ready,omitempty"`
-	Created   string `yaml:"created,omitempty"`
-}
-
 type apiResourcesOutput struct {
 	Name       string `yaml:"name"`
 	Kind       string `yaml:"kind"`
@@ -115,22 +107,6 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	}
 	return c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
-}
-
-func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
-	result := make([]listResourcesOutput, 0)
-	for _, item := range list.Items {
-		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
-		containersStatus, _ := getContainerInfo(item)
-		result = append(result, listResourcesOutput{
-			Name:      item.GetName(),
-			Namespace: item.GetNamespace(),
-			Status:    status,
-			Ready:     containersStatus,
-			Created:   item.GetCreationTimestamp().UTC().Format("2006-01-02"),
-		})
-	}
-	return result
 }
 
 func getContainerInfo(item unstructured.Unstructured) (string, error) {
@@ -280,15 +256,6 @@ func formatEventList(list []eventOutput) (string, error) {
 }
 
 func formatApiList(list []apiResourcesOutput) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	//fmt.Fprintln(os.Stderr, string(yamlBytes))
-	return string(yamlBytes), nil
-}
-
-func formatResourcesList(list []listResourcesOutput) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
