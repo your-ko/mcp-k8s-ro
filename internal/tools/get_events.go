@@ -30,7 +30,7 @@ func (tool EventGetter) InputSchema() mcp.InputSchema {
 		Type: "object",
 		Properties: json.RawMessage(`{
              "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"},
-             "limit": {"type":"integer","description":"Number of lines to fetch"}
+             "limit": {"type":"integer","description":"Number of lines to fetch. 0 or none is to fetch everything"}
          }`),
 		Required: []string{},
 	}
@@ -44,10 +44,6 @@ func (tool EventGetter) Execute(params json.RawMessage) (string, error) {
 	err := json.Unmarshal(params, &p)
 	if err != nil {
 		return "", err
-	}
-	if p.Limit == 0 {
-		// if not provided then show at least something
-		p.Limit = 100
 	}
 	return tool.client.GetEvents(p.Namespace, p.Limit)
 }

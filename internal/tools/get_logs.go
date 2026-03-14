@@ -49,10 +49,5 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	if p.TailLines == 0 {
-		// if not provided then show at least something
-		p.TailLines = 100
-	}
-
 	return tool.client.GetLogs(p.Name, p.Namespace, p.TailLines)
 }

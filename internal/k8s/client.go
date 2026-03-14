@@ -230,6 +230,7 @@ func (c *Client) GetApiResources(groupFilter string) (string, error) {
 }
 
 func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
+	// TODO: fix counter.0 is to fetch everything
 	list, err := c.clientSet.EventsV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return "", err
@@ -237,11 +238,11 @@ func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 
 	result := make([]eventOutput, 0)
 	for _, event := range list.Items {
-		count := int32(1)
+		eventCount := int32(1)
 		if event.Series != nil {
-			count = event.Series.Count
+			eventCount = event.Series.Count
 		} else if event.DeprecatedCount > 0 {
-			count = event.DeprecatedCount
+			eventCount = event.DeprecatedCount
 		}
 		lastTime := event.EventTime.Time
 		if event.Series != nil {
@@ -260,7 +261,7 @@ func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 			Reason:    event.Reason,
 			Message:   event.Note,
 			Type:      event.Type,
-			Count:     count,
+			Count:     eventCount,
 			FirstTime: yamlTime{MicroTime: metav1.MicroTime{Time: firstTime}},
 			LastTime:  yamlTime{MicroTime: metav1.MicroTime{Time: lastTime}},
 		})
