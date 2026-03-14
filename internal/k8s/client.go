@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -257,6 +258,10 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 			LastTime:  yamlTime{MicroTime: metav1.MicroTime{Time: lastTime}},
 		})
 	}
+
+	sort.SliceStable(result, func(left, right int) bool {
+		return !result[left].LastTime.Before(&result[right].LastTime.MicroTime)
+	})
 
 	return formatEventList(result)
 }
