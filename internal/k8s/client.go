@@ -307,7 +307,8 @@ func (c *Client) TopPods(namespace string) (string, error) {
 		topContainers := make([]Container, 0, len(podMetrics.Containers))
 		for _, cMetrics := range podMetrics.Containers {
 			topContainers = append(topContainers, Container{
-				Name:   cMetrics.Name,
+				Name: cMetrics.Name,
+				// TODO: check the other methods, they might be more useful
 				CPU:    cMetrics.Usage.Cpu().Value(),
 				Memory: cMetrics.Usage.Memory().Value(),
 			})
