@@ -27,7 +27,7 @@ func (tool EventGetter) InputSchema() mcp.InputSchema {
 		Type: "object",
 		Properties: json.RawMessage(`{
               "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"},
-              "limit": {"type":"integer","description":"Number of lines to fetch"},
+              "limit": {"type":"integer","description":"Number of lines to fetch"}
           }`),
 		Required: []string{},
 	}
