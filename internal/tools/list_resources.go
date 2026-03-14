@@ -35,7 +35,7 @@ func (tool ListResources) Name() string {
 
 func (tool ListResources) Description() string {
 	return "List any Kubernetes resource by type. " +
-		"This server is pinned to context '" + tool.client.Header() + "'. " +
+		"This server is pinned to context '" + tool.client.ContextSummary() + "'. " +
 		"Restart the server to switch clusters."
 }
 

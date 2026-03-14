@@ -21,7 +21,7 @@ func (tool LogGetter) Name() string {
 
 func (tool LogGetter) Description() string {
 	return "Returns logs for a given pod. " +
-		"This server is pinned to context '" + tool.client.Header() + "'. " +
+		"This server is pinned to context '" + tool.client.ContextSummary() + "'. " +
 		"Restart the server to switch clusters."
 }
 

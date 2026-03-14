@@ -21,7 +21,7 @@ func (tool ListResourceTypes) Name() string {
 
 func (tool ListResourceTypes) Description() string {
 	return "Lists all available resource types via discovery API. " +
-		"This server is pinned to context '" + tool.client.Header() + "'. " +
+		"This server is pinned to context '" + tool.client.ContextSummary() + "'. " +
 		"Restart the server to switch clusters."
 }
 
