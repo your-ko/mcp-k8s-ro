@@ -35,7 +35,12 @@ func main() {
 		os.Exit(1)
 	}
 	contextName := apiConfig.CurrentContext
-	clusterName := apiConfig.Contexts[contextName].Cluster
+	ctx, ok := apiConfig.Contexts[contextName]
+	if !ok {
+		slog.Error("current context not found in kubeconfig", "context", contextName)
+		os.Exit(1)
+	}
+	clusterName := ctx.Cluster
 
 	k8sClient, err := k8s.NewClient(config, contextName, clusterName)
 	if err != nil {
