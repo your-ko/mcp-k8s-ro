@@ -24,14 +24,14 @@ func main() {
 	slog.Info(fmt.Sprintf("Version: %s, BuildDate: %s, GitCommit: %s", Version, BuildDate, GitCommit))
 
 	config, err := getConfig()
-
 	if err != nil {
-		slog.With("error", err)
+		slog.Error("failed to read kubeconfig", "error", err)
 		os.Exit(1)
 	}
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	apiConfig, err := rules.Load()
 	if err != nil {
+		slog.Error("failed to load kubeconfig", "error", err)
 		os.Exit(1)
 	}
 	contextName := apiConfig.CurrentContext
