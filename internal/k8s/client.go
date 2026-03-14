@@ -22,13 +22,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Client struct {
-	dynamic   dynamic.Interface
-	discovery *discovery.DiscoveryClient
-	mapper    meta.RESTMapper // resolves "pods" → GVR
-	clientSet *kubernetes.Clientset
+	dynamic     dynamic.Interface
+	discovery   *discovery.DiscoveryClient
+	mapper      meta.RESTMapper // resolves "pods" → GVR
+	clientSet   *kubernetes.Clientset
+	contextName string
+	clusterName string
 }
 
 func NewClient(config *rest.Config) (*Client, error) {
@@ -47,7 +50,23 @@ func NewClient(config *rest.Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{dynamic: dyn, discovery: disc, mapper: mapper, clientSet: clientSet}, nil
+
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	apiConfig, err := rules.Load()
+	if err != nil {
+		return nil, err
+	}
+	contextName := apiConfig.CurrentContext
+	clusterName := apiConfig.Contexts[contextName].Cluster
+
+	return &Client{
+		dynamic:     dyn,
+		discovery:   disc,
+		mapper:      mapper,
+		clientSet:   clientSet,
+		contextName: contextName,
+		clusterName: clusterName,
+	}, nil
 }
 
 type apiResourcesOutput struct {
@@ -95,6 +114,31 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 		return c.dynamic.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	}
 	return c.dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
+}
+
+func (c *Client) formatResourcesList(list []listResourcesOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	header := fmt.Sprintf("# context: %s | cluster: %s\n", c.contextName, c.clusterName)
+	return header + string(yamlBytes), nil
+}
+
+func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
+	result := make([]listResourcesOutput, 0)
+	for _, item := range list.Items {
+		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
+		containersStatus, _ := getContainerInfo(item)
+		result = append(result, listResourcesOutput{
+			Name:      item.GetName(),
+			Namespace: item.GetNamespace(),
+			Status:    status,
+			Ready:     containersStatus,
+			Created:   item.GetCreationTimestamp().UTC().Format("2006-01-02"),
+		})
+	}
+	return result
 }
 
 func (c *Client) GetResource(ctx context.Context, name string, resource string, namespace string) (*unstructured.Unstructured, error) {

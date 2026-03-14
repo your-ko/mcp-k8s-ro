@@ -32,7 +32,6 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 				ProtocolVersion: "2024-11-05",
 				ServerInfo:      ServerInfo{Name: s.name, Version: s.version},
 				Capabilities:    Capabilities{},
-				Message:         "This server is pinned to the context active at startup. To switch clusters, restart the server with the desired context active.",
 			},
 		}, nil
 	} else if request.Method == "tools/list" {

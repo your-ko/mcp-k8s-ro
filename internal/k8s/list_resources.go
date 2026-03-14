@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
-	"gopkg.in/yaml.v3"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // ListResources Takes a resource type (e.g. pods, deployments, certificates) and optional namespace, returns a formatted list.
@@ -23,9 +21,7 @@ import (
 //    created: "2026-03-09"
 
 type ListResources struct {
-	client      *Client
-	contextName string
-	clusterName string
+	client *Client
 }
 
 func NewResourcesLister(client *Client) ListResources {
@@ -65,7 +61,7 @@ func (tool ListResources) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return formatResourcesList(tool.normaliseList(list))
+	return tool.client.formatResourcesList(normaliseList(list))
 }
 
 type listResourcesOutput struct {
@@ -75,30 +71,4 @@ type listResourcesOutput struct {
 	Ready     string `yaml:"ready,omitempty"`
 	Created   string `yaml:"created,omitempty"`
 	Context   string `yaml:"context"`
-}
-
-func formatResourcesList(list []listResourcesOutput) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	//fmt.Fprintln(os.Stderr, string(yamlBytes))
-	return string(yamlBytes), nil
-}
-
-func (tool ListResources) normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
-	result := make([]listResourcesOutput, 0)
-	for _, item := range list.Items {
-		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
-		containersStatus, _ := getContainerInfo(item)
-		result = append(result, listResourcesOutput{
-			Name:      item.GetName(),
-			Namespace: item.GetNamespace(),
-			Status:    status,
-			Ready:     containersStatus,
-			Created:   item.GetCreationTimestamp().UTC().Format("2006-01-02"),
-			Context:   tool.contextName,
-		})
-	}
-	return result
 }
