@@ -1,18 +1,18 @@
-package k8s
+package tools
 
 import (
 	"context"
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
-	"gopkg.in/yaml.v3"
 )
 
 type DescribeResource struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewResourceDescriber(client *Client) DescribeResource {
+func NewResourceDescriber(client *k8s.Client) DescribeResource {
 	return DescribeResource{client: client}
 }
 
@@ -21,17 +21,19 @@ func (tool DescribeResource) Name() string {
 }
 
 func (tool DescribeResource) Description() string {
-	return "Describe any Kubernetes resource"
+	return "Describe any Kubernetes resource. " +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
+		"Restart the server to switch clusters."
 }
 
 func (tool DescribeResource) InputSchema() mcp.InputSchema {
 	return mcp.InputSchema{
 		Type: "object",
 		Properties: json.RawMessage(`{
-              "name":  {"type":"string","description":"Resource name"},
-              "resource":  {"type":"string","description":"Resource type, e.g. pods, deployments, certificates"},
-              "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"}
-          }`),
+             "name":  {"type":"string","description":"Resource name"},
+             "resource":  {"type":"string","description":"Resource type, e.g. pods, deployments, certificates"},
+             "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"}
+         }`),
 		Required: []string{"name", "resource"},
 	}
 }
@@ -46,13 +48,5 @@ func (tool DescribeResource) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resource, err := tool.client.GetResource(context.TODO(), p.Name, p.Resource, p.Namespace)
-	if err != nil {
-		return "", err
-	}
-	yamlBytes, err := yaml.Marshal(resource.Object)
-	if err != nil {
-		return "", err
-	}
-	return string(yamlBytes), nil
+	return tool.client.GetResource(context.TODO(), p.Name, p.Resource, p.Namespace)
 }
