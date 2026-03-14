@@ -1,18 +1,18 @@
-package k8s
+package tools
 
 import (
 	"context"
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
-	"gopkg.in/yaml.v3"
 )
 
 type DescribeResource struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewResourceDescriber(client *Client) DescribeResource {
+func NewResourceDescriber(client *k8s.Client) DescribeResource {
 	return DescribeResource{client: client}
 }
 
@@ -22,7 +22,7 @@ func (tool DescribeResource) Name() string {
 
 func (tool DescribeResource) Description() string {
 	return "Describe any Kubernetes resource." +
-		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
 		"Restart the server to switch clusters."
 }
 
@@ -48,14 +48,5 @@ func (tool DescribeResource) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resource, err := tool.client.GetResource(context.TODO(), p.Name, p.Resource, p.Namespace)
-	if err != nil {
-		return "", err
-	}
-	yamlBytes, err := yaml.Marshal(resource.Object)
-	if err != nil {
-		return "", err
-	}
-	// TODO: add print header
-	return string(yamlBytes), nil
+	return tool.client.GetResource(context.TODO(), p.Name, p.Resource, p.Namespace)
 }

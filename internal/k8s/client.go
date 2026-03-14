@@ -77,18 +77,24 @@ func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool,
 	return gvr, mapping.Scope.Name() == meta.RESTScopeNameNamespace, nil
 }
 
-func (c *Client) ListResources(ctx context.Context, resource, namespace string) (*unstructured.UnstructuredList, error) {
+func (c *Client) ListResources(ctx context.Context, resource, namespace string) (string, error) {
 	gvr, namespaced, err := c.resolveGVR(resource)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
+	var list *unstructured.UnstructuredList
 	if namespaced && namespace != "" {
-		return c.dynamic.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		list, err = c.dynamic.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	} else {
+		list, err = c.dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
 	}
-	return c.dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	return formatResourcesList(normaliseList(list), c.Header())
 }
 
-func (c *Client) header() string {
+func (c *Client) Header() string {
 	return fmt.Sprintf("# context: %s | cluster: %s\n", c.contextName, c.clusterName)
 }
 
@@ -102,22 +108,32 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 			Namespace: item.GetNamespace(),
 			Status:    status,
 			Ready:     containersStatus,
-			Created:   item.GetCreationTimestamp().UTC().Format("2006-01-02"),
+			Created:   item.GetCreationTimestamp().UTC().Format(time.DateTime),
 		})
 	}
 	return result
 }
 
-func (c *Client) GetResource(ctx context.Context, name string, resource string, namespace string) (*unstructured.Unstructured, error) {
+func (c *Client) GetResource(ctx context.Context, name string, resource string, namespace string) (string, error) {
 	gvr, namespaced, err := c.resolveGVR(resource)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
+	var res *unstructured.Unstructured
 	if namespaced && namespace != "" {
-		return c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		res, err = c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		res, err = c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 	}
-	return c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	yamlBytes, err := yaml.Marshal(res.Object)
+	if err != nil {
+		return "", err
+	}
+	return c.Header() + string(yamlBytes), nil
 }
 
 func getContainerInfo(item unstructured.Unstructured) (string, error) {
@@ -148,7 +164,7 @@ func getContainerInfo(item unstructured.Unstructured) (string, error) {
 	return fmt.Sprintf("%v/%v", ready, total), nil
 }
 
-func (c *Client) getLogs(podName string, namespace string, tailLines int64) (string, error) {
+func (c *Client) GetLogs(podName string, namespace string, tailLines int64) (string, error) {
 	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{TailLines: &tailLines})
 	podLogs, err := request.Stream(context.TODO())
 	if err != nil {
@@ -163,7 +179,7 @@ func (c *Client) getLogs(podName string, namespace string, tailLines int64) (str
 	}
 	str := buf.String()
 
-	return str, nil
+	return c.Header() + str, nil
 }
 
 var skipGroups = map[string]bool{
@@ -173,7 +189,7 @@ var skipGroups = map[string]bool{
 	"coordination.k8s.io":    true, // leases (internal leader election)
 }
 
-func (c *Client) getApiResources(groupFilter string) (string, error) {
+func (c *Client) GetApiResources(groupFilter string) (string, error) {
 	resources, err := c.discovery.ServerPreferredResources()
 	if err != nil {
 		return "", err
@@ -210,10 +226,10 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 		}
 	}
 
-	return formatApiList(result, c.header())
+	return formatApiList(result, c.Header())
 }
 
-func (c *Client) getEvents(namespace string, limit int64) (string, error) {
+func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 	list, err := c.clientSet.EventsV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return "", err
@@ -254,7 +270,7 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 		return !result[left].LastTime.Before(&result[right].LastTime.MicroTime)
 	})
 
-	return formatEventList(result, c.header())
+	return formatEventList(result, c.Header())
 }
 
 func formatEventList(list []eventOutput, header string) (string, error) {
@@ -279,10 +295,6 @@ func formatResourcesList(list []listResourcesOutput, header string) (string, err
 		return "", err
 	}
 	return header + string(yamlBytes), nil
-}
-
-type yamlTime struct {
-	metav1.MicroTime
 }
 
 func (t yamlTime) MarshalYAML() (interface{}, error) {

@@ -1,9 +1,10 @@
-package k8s
+package tools
 
 import (
 	"context"
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
 
@@ -21,10 +22,10 @@ import (
 //    created: "2026-03-09"
 
 type ListResources struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewResourcesLister(client *Client) ListResources {
+func NewResourcesLister(client *k8s.Client) ListResources {
 	return ListResources{client: client}
 }
 
@@ -34,7 +35,7 @@ func (tool ListResources) Name() string {
 
 func (tool ListResources) Description() string {
 	return "List any Kubernetes resource by type. " +
-		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
 		"Restart the server to switch clusters."
 }
 
@@ -59,17 +60,5 @@ func (tool ListResources) Execute(params json.RawMessage) (string, error) {
 		return "", err
 	}
 	// TODO: improve context
-	list, err := tool.client.ListResources(context.TODO(), p.Resource, p.Namespace)
-	if err != nil {
-		return "", err
-	}
-	return formatResourcesList(normaliseList(list), tool.client.header())
-}
-
-type listResourcesOutput struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace,omitempty"`
-	Status    string `yaml:"status,omitempty"`
-	Ready     string `yaml:"ready,omitempty"`
-	Created   string `yaml:"created,omitempty"`
+	return tool.client.ListResources(context.TODO(), p.Resource, p.Namespace)
 }

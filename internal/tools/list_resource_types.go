@@ -1,16 +1,17 @@
-package k8s
+package tools
 
 import (
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
 
 type ListResourceTypes struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewResourceTypesLister(client *Client) ListResourceTypes {
+func NewResourceTypesLister(client *k8s.Client) ListResourceTypes {
 	return ListResourceTypes{client: client}
 }
 
@@ -20,7 +21,7 @@ func (tool ListResourceTypes) Name() string {
 
 func (tool ListResourceTypes) Description() string {
 	return "Lists all available resource types via discovery API. " +
-		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
 		"Restart the server to switch clusters."
 }
 
@@ -42,12 +43,5 @@ func (tool ListResourceTypes) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tool.client.getApiResources(p.ApiGroup)
-}
-
-type apiResourcesOutput struct {
-	Name       string `yaml:"name"`
-	Kind       string `yaml:"kind"`
-	Group      string `yaml:"group"`
-	Namespaced bool   `yaml:"namespaced"`
+	return tool.client.GetApiResources(p.ApiGroup)
 }

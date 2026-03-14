@@ -8,6 +8,7 @@ import (
 
 	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
+	"github.com/your-ko/mcp-k8s-ro/internal/tools"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -49,11 +50,11 @@ func main() {
 	}
 
 	server := mcp.New("mcp-k8s-ro", Version, contextName, clusterName)
-	server.Register(k8s.NewResourcesLister(k8sClient))
-	server.Register(k8s.NewResourceDescriber(k8sClient))
-	server.Register(k8s.NewResourceTypesLister(k8sClient))
-	server.Register(k8s.NewLogGetter(k8sClient))
-	server.Register(k8s.NewEventGetter(k8sClient))
+	server.Register(tools.NewResourcesLister(k8sClient))
+	server.Register(tools.NewResourceDescriber(k8sClient))
+	server.Register(tools.NewResourceTypesLister(k8sClient))
+	server.Register(tools.NewLogGetter(k8sClient))
+	server.Register(tools.NewEventGetter(k8sClient))
 	server.Start()
 }
 

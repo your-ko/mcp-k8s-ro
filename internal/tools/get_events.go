@@ -1,16 +1,17 @@
-package k8s
+package tools
 
 import (
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
 
 type EventGetter struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewEventGetter(client *Client) EventGetter {
+func NewEventGetter(client *k8s.Client) EventGetter {
 	return EventGetter{client: client}
 }
 
@@ -20,7 +21,7 @@ func (tool EventGetter) Name() string {
 
 func (tool EventGetter) Description() string {
 	return "Returns list of K8s events." +
-		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
 		"Restart the server to switch clusters."
 }
 
@@ -48,18 +49,5 @@ func (tool EventGetter) Execute(params json.RawMessage) (string, error) {
 		// if not provided then show at least something
 		p.Limit = 100
 	}
-	// TODO: add print header
-	return tool.client.getEvents(p.Namespace, p.Limit)
-}
-
-type eventOutput struct {
-	Name      string   `yaml:"name"`
-	Namespace string   `yaml:"namespace"`
-	Kind      string   `yaml:"kind"`
-	Reason    string   `yaml:"reason"`
-	Message   string   `yaml:"message"`
-	Type      string   `yaml:"type"`
-	Count     int32    `yaml:"count"`
-	FirstTime yamlTime `yaml:"firstTime"`
-	LastTime  yamlTime `yaml:"lastTime"`
+	return tool.client.GetEvents(p.Namespace, p.Limit)
 }

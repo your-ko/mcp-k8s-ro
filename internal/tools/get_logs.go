@@ -1,16 +1,17 @@
-package k8s
+package tools
 
 import (
 	"encoding/json"
 
+	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
 )
 
 type LogGetter struct {
-	client *Client
+	client *k8s.Client
 }
 
-func NewLogGetter(client *Client) LogGetter {
+func NewLogGetter(client *k8s.Client) LogGetter {
 	return LogGetter{client: client}
 }
 
@@ -20,7 +21,7 @@ func (tool LogGetter) Name() string {
 
 func (tool LogGetter) Description() string {
 	return "Returns logs for a given pod. " +
-		"This server is pinned to context '" + tool.client.contextName + "'. " +
+		"This server is pinned to context '" + tool.client.Header() + "'. " +
 		"Restart the server to switch clusters."
 }
 
@@ -53,6 +54,5 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 		p.TailLines = 100
 	}
 
-	// TODO: add print header
-	return tool.client.getLogs(p.Name, p.Namespace, p.TailLines)
+	return tool.client.GetLogs(p.Name, p.Namespace, p.TailLines)
 }
