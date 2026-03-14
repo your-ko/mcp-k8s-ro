@@ -65,15 +65,15 @@ type apiResourcesOutput struct {
 }
 
 type eventOutput struct {
-	Name      string    `yaml:"name"`
-	Namespace string    `yaml:"namespace"`
-	Kind      string    `yaml:"kind"`
-	Reason    string    `yaml:"reason"`
-	Message   string    `yaml:"message"`
-	Type      string    `yaml:"type"`
-	Count     int32     `yaml:"count"`
-	FirstTime time.Time `yaml:"firstTime"`
-	LastTime  time.Time `yaml:"lastTime"`
+	Name      string   `yaml:"name"`
+	Namespace string   `yaml:"namespace"`
+	Kind      string   `yaml:"kind"`
+	Reason    string   `yaml:"reason"`
+	Message   string   `yaml:"message"`
+	Type      string   `yaml:"type"`
+	Count     int32    `yaml:"count"`
+	FirstTime yamlTime `yaml:"firstTime"`
+	LastTime  yamlTime `yaml:"lastTime"`
 }
 
 func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool, error) {
@@ -253,8 +253,8 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 			Message:   event.Note,
 			Type:      event.Type,
 			Count:     count,
-			FirstTime: event.EventTime.Time,
-			LastTime:  lastTime,
+			FirstTime: yamlTime{MicroTime: metav1.MicroTime{Time: event.EventTime.Time}},
+			LastTime:  yamlTime{MicroTime: metav1.MicroTime{Time: lastTime}},
 		})
 	}
 
@@ -286,4 +286,15 @@ func formatResourcesList(list []listResourcesOutput) (string, error) {
 	}
 	//fmt.Fprintln(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
+}
+
+type yamlTime struct {
+	metav1.MicroTime
+}
+
+func (t yamlTime) MarshalYAML() (interface{}, error) {
+	if t.IsZero() {
+		return "", nil
+	}
+	return t.UTC().Format(time.DateTime), nil
 }
