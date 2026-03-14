@@ -33,6 +33,13 @@ type eventOutput struct {
 	LastTime  yamlTime `yaml:"lastTime"`
 }
 
+type podTopOutput struct {
+	Name      string `yaml:"name"`
+	Namespace string `yaml:"namespace"`
+	CPU       string `yaml:"cpu"`
+	Memory    string `yaml:"memory"`
+}
+
 type yamlTime struct {
 	metav1.MicroTime
 }
