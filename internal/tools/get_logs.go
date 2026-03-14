@@ -31,7 +31,7 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
 		Properties: json.RawMessage(`{
              "name":  {"type":"string","description":"Pod name"},
              "namespace": {"type":"string","description":"Namespace"},
-			  "tailLines": {"type":"integer","description":"Number of lines to tail"}
+             "tailLines": {"type":"integer","description":"Number of lines to tail. 0 or none is to fetch everything"}
          }`),
 		Required: []string{"name"},
 	}
