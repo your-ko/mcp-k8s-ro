@@ -35,10 +35,18 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 			},
 		}, nil
 	} else if request.Method == "tools/list" {
+		toolDefs := make([]ToolDefinition, 0, len(s.tools))
+		for _, tool := range s.tools {
+			toolDefs = append(toolDefs, ToolDefinition{
+				Name:        tool.Name(),
+				Description: tool.Description(),
+				InputSchema: tool.InputSchema(),
+			})
+		}
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      request.ID,
-			Result:  map[string]any{"tools": s.tools},
+			Result:  map[string]any{"tools": toolDefs},
 		}, nil
 	} else if request.Method == "tools/call" {
 		var p struct {
