@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -117,15 +116,6 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	return c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 }
 
-func formatResourcesList(list []listResourcesOutput) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	//fmt.Fprintln(os.Stderr, string(yamlBytes))
-	return string(yamlBytes), nil
-}
-
 func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 	result := make([]listResourcesOutput, 0)
 	for _, item := range list.Items {
@@ -203,14 +193,14 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 	result := make([]apiResourcesOutput, 0)
 	for _, apiGroup := range resources {
 		for _, r := range apiGroup.APIResources {
+			group := r.Group
+			if groupFilter != "" && group != groupFilter {
+				// use group filter
+				continue
+			}
 			if strings.Contains(r.Name, "/") {
 				// Any resource name containing / is a subresource — pods/log, pods/exec, pods/status, deployments/scale etc.
 				// We don't need them
-				continue
-			}
-			group := r.Group
-			if groupFilter != "" && group != groupFilter {
-				// filter out
 				continue
 			}
 			if group == "" {
@@ -221,7 +211,7 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 				// no need to return them as well
 				continue
 			}
-			fmt.Fprintln(os.Stderr, apiGroup.GroupVersion)
+			//fmt.Fprintln(os.Stderr, apiGroup.GroupVersion)
 
 			result = append(result, apiResourcesOutput{
 				Name:       r.Name,
@@ -233,15 +223,6 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 	}
 
 	return formatApiList(result)
-}
-
-func formatApiList(list []apiResourcesOutput) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	//fmt.Fprintln(os.Stderr, string(yamlBytes))
-	return string(yamlBytes), nil
 }
 
 func (c *Client) getEvents(namespace string, limit int64) (string, error) {
@@ -281,6 +262,24 @@ func (c *Client) getEvents(namespace string, limit int64) (string, error) {
 }
 
 func formatEventList(list []eventOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
+	return string(yamlBytes), nil
+}
+
+func formatApiList(list []apiResourcesOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
+	return string(yamlBytes), nil
+}
+
+func formatResourcesList(list []listResourcesOutput) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
