@@ -12,7 +12,7 @@ type DescribeResource struct {
 	client *Client
 }
 
-func NewDescribeResource(client *Client) DescribeResource {
+func NewResourceDescriber(client *Client) DescribeResource {
 	return DescribeResource{client: client}
 }
 

@@ -24,7 +24,7 @@ type ListResources struct {
 	client *Client
 }
 
-func NewListResources(client *Client) ListResources {
+func NewResourcesLister(client *Client) ListResources {
 	return ListResources{client: client}
 }
 

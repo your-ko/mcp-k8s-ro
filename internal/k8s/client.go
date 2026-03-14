@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
+	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
@@ -64,6 +65,18 @@ type apiResourcesOutput struct {
 	Namespaced bool   `yaml:"namespaced"`
 }
 
+type eventOutput struct {
+	Name      string   `yaml:"name"`
+	Namespace string   `yaml:"namespace"`
+	Kind      string   `yaml:"kind"`
+	Reason    string   `yaml:"reason"`
+	Message   string   `yaml:"message"`
+	Type      string   `yaml:"type"`
+	Count     int32    `yaml:"count"`
+	FirstTime yamlTime `yaml:"firstTime"`
+	LastTime  yamlTime `yaml:"lastTime"`
+}
+
 func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool, error) {
 	partialResource := schema.GroupVersionResource{Resource: resource}
 	gvr, err := c.mapper.ResourceFor(partialResource)
@@ -102,15 +115,6 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	}
 	return c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
-}
-
-func formatResourcesList(list []listResourcesOutput) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	//fmt.Fprintln(os.Stderr, string(yamlBytes))
-	return string(yamlBytes), nil
 }
 
 func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
@@ -190,14 +194,14 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 	result := make([]apiResourcesOutput, 0)
 	for _, apiGroup := range resources {
 		for _, r := range apiGroup.APIResources {
+			group := r.Group
+			if groupFilter != "" && group != groupFilter {
+				// use group filter
+				continue
+			}
 			if strings.Contains(r.Name, "/") {
 				// Any resource name containing / is a subresource — pods/log, pods/exec, pods/status, deployments/scale etc.
 				// We don't need them
-				continue
-			}
-			group := r.Group
-			if groupFilter != "" && group != groupFilter {
-				// filter out
 				continue
 			}
 			if group == "" {
@@ -208,7 +212,7 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 				// no need to return them as well
 				continue
 			}
-			fmt.Fprintln(os.Stderr, apiGroup.GroupVersion)
+			//fmt.Fprintln(os.Stderr, apiGroup.GroupVersion)
 
 			result = append(result, apiResourcesOutput{
 				Name:       r.Name,
@@ -222,6 +226,59 @@ func (c *Client) getApiResources(groupFilter string) (string, error) {
 	return formatApiList(result)
 }
 
+func (c *Client) getEvents(namespace string, limit int64) (string, error) {
+	list, err := c.clientSet.EventsV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	result := make([]eventOutput, 0)
+	for _, event := range list.Items {
+		count := int32(1)
+		if event.Series != nil {
+			count = event.Series.Count
+		} else if event.DeprecatedCount > 0 {
+			count = event.DeprecatedCount
+		}
+		lastTime := event.EventTime.Time
+		if event.Series != nil {
+			lastTime = event.Series.LastObservedTime.Time
+		} else if !event.DeprecatedLastTimestamp.IsZero() {
+			lastTime = event.DeprecatedLastTimestamp.Time
+		}
+		firstTime := event.EventTime.Time
+		if firstTime.IsZero() {
+			firstTime = event.DeprecatedFirstTimestamp.Time
+		}
+		result = append(result, eventOutput{
+			Name:      event.Regarding.Name,
+			Namespace: event.Regarding.Namespace,
+			Kind:      event.Regarding.Kind,
+			Reason:    event.Reason,
+			Message:   event.Note,
+			Type:      event.Type,
+			Count:     count,
+			FirstTime: yamlTime{MicroTime: metav1.MicroTime{Time: firstTime}},
+			LastTime:  yamlTime{MicroTime: metav1.MicroTime{Time: lastTime}},
+		})
+	}
+
+	sort.SliceStable(result, func(left, right int) bool {
+		return !result[left].LastTime.Before(&result[right].LastTime.MicroTime)
+	})
+
+	return formatEventList(result)
+}
+
+func formatEventList(list []eventOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
+	return string(yamlBytes), nil
+}
+
 func formatApiList(list []apiResourcesOutput) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
@@ -229,4 +286,24 @@ func formatApiList(list []apiResourcesOutput) (string, error) {
 	}
 	//fmt.Fprintln(os.Stderr, string(yamlBytes))
 	return string(yamlBytes), nil
+}
+
+func formatResourcesList(list []listResourcesOutput) (string, error) {
+	yamlBytes, err := yaml.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Fprintln(os.Stderr, string(yamlBytes))
+	return string(yamlBytes), nil
+}
+
+type yamlTime struct {
+	metav1.MicroTime
+}
+
+func (t yamlTime) MarshalYAML() (interface{}, error) {
+	if t.IsZero() {
+		return "", nil
+	}
+	return t.UTC().Format(time.DateTime), nil
 }
