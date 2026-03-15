@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,15 +23,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 type Client struct {
-	dynamic     dynamic.Interface
-	discovery   *discovery.DiscoveryClient
-	mapper      meta.RESTMapper // resolves "pods" → GVR
-	clientSet   *kubernetes.Clientset
-	contextName string
-	clusterName string
+	dynamic      dynamic.Interface
+	discovery    *discovery.DiscoveryClient
+	mapper       meta.RESTMapper // resolves "pods" → GVR
+	clientSet    *kubernetes.Clientset
+	contextName  string
+	clusterName  string
+	metricClient *metrics.Clientset
 }
 
 func NewClient(config *rest.Config, contextName string, clusterName string) (*Client, error) {
@@ -49,14 +52,19 @@ func NewClient(config *rest.Config, contextName string, clusterName string) (*Cl
 	if err != nil {
 		return nil, err
 	}
+	metricClient, err := metrics.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Client{
-		dynamic:     dyn,
-		discovery:   disc,
-		mapper:      mapper,
-		clientSet:   clientSet,
-		contextName: contextName,
-		clusterName: clusterName,
+		dynamic:      dyn,
+		discovery:    disc,
+		mapper:       mapper,
+		clientSet:    clientSet,
+		contextName:  contextName,
+		clusterName:  clusterName,
+		metricClient: metricClient,
 	}, nil
 }
 
@@ -283,6 +291,42 @@ func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 	})
 
 	return formatEventList(result, c.Header())
+}
+
+func (c *Client) TopPods(namespace string) (string, error) {
+	podMetricsList, err := c.metricClient.MetricsV1beta1().PodMetricses(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	result := make([]podTopOutput, 0, len(podMetricsList.Items))
+	for _, podMetrics := range podMetricsList.Items {
+		totalCPU := resource.NewQuantity(0, resource.DecimalSI)
+		totalMemory := resource.NewQuantity(0, resource.BinarySI)
+		containers := make([]containerTopOutput, 0, len(podMetrics.Containers))
+		for _, cMetrics := range podMetrics.Containers {
+			cpu := cMetrics.Usage[v1.ResourceCPU]
+			mem := cMetrics.Usage[v1.ResourceMemory]
+			totalCPU.Add(cpu)
+			totalMemory.Add(mem)
+			containers = append(containers, containerTopOutput{
+				Name:   cMetrics.Name,
+				CPU:    fmt.Sprintf("%dm", cpu.MilliValue()),
+				Memory: fmt.Sprintf("%dMi", mem.Value()/1024/1024),
+			})
+		}
+		result = append(result, podTopOutput{
+			Name:       podMetrics.Name,
+			Namespace:  podMetrics.Namespace,
+			CPU:        fmt.Sprintf("%dm", totalCPU.MilliValue()),
+			Memory:     fmt.Sprintf("%dMi", totalMemory.Value()/1024/1024),
+			Containers: containers,
+		})
+	}
+	yamlBytes, err := yaml.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+	return c.Header() + string(yamlBytes), nil
 }
 
 func formatEventList(list []eventOutput, header string) (string, error) {

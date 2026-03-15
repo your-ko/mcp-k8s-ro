@@ -55,6 +55,7 @@ func main() {
 	server.Register(tools.NewResourceTypesLister(k8sClient))
 	server.Register(tools.NewLogGetter(k8sClient))
 	server.Register(tools.NewEventGetter(k8sClient))
+	server.Register(tools.NewPodTopper(k8sClient))
 	server.Start()
 }
 
