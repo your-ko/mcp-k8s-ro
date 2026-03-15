@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -293,40 +294,39 @@ func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 }
 
 func (c *Client) TopPods(namespace string) (string, error) {
-	metrics, err := c.metricClient.MetricsV1beta1().PodMetricses(namespace).List(context.TODO(), metav1.ListOptions{})
+	podMetricsList, err := c.metricClient.MetricsV1beta1().PodMetricses(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
-	metricsOutput := make([]podTopOutput, 0, len(metrics.Items))
-	for _, podMetrics := range metrics.Items {
-		podTop := podTopOutput{
-			Name:      podMetrics.Name,
-			Namespace: podMetrics.Namespace,
-		}
-
-		topContainers := make([]Container, 0, len(podMetrics.Containers))
+	result := make([]podTopOutput, 0, len(podMetricsList.Items))
+	for _, podMetrics := range podMetricsList.Items {
+		totalCPU := resource.NewQuantity(0, resource.DecimalSI)
+		totalMemory := resource.NewQuantity(0, resource.BinarySI)
+		containers := make([]containerTopOutput, 0, len(podMetrics.Containers))
 		for _, cMetrics := range podMetrics.Containers {
-			topContainers = append(topContainers, Container{
-				Name: cMetrics.Name,
-				// TODO: check the other methods, they might be more useful
-				CPU:    cMetrics.Usage.Cpu().Value(),
-				Memory: cMetrics.Usage.Memory().Value(),
+			cpu := cMetrics.Usage[v1.ResourceCPU]
+			mem := cMetrics.Usage[v1.ResourceMemory]
+			totalCPU.Add(cpu)
+			totalMemory.Add(mem)
+			containers = append(containers, containerTopOutput{
+				Name:   cMetrics.Name,
+				CPU:    fmt.Sprintf("%dm", cpu.MilliValue()),
+				Memory: fmt.Sprintf("%dMi", mem.Value()/1024/1024),
 			})
-			podTop.CPU += cMetrics.Usage.Cpu().Value()
-			podTop.Memory += cMetrics.Usage.Memory().Value()
 		}
-		podTop.Containers = topContainers
-		metricsOutput = append(metricsOutput, podTop)
+		result = append(result, podTopOutput{
+			Name:       podMetrics.Name,
+			Namespace:  podMetrics.Namespace,
+			CPU:        fmt.Sprintf("%dm", totalCPU.MilliValue()),
+			Memory:     fmt.Sprintf("%dMi", totalMemory.Value()/1024/1024),
+			Containers: containers,
+		})
 	}
-	return formatTopPodList(metricsOutput, c.Header())
-}
-
-func formatTopPodList(list []podTopOutput, header string) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
+	yamlBytes, err := yaml.Marshal(result)
 	if err != nil {
 		return "", err
 	}
-	return header + string(yamlBytes), nil
+	return c.Header() + string(yamlBytes), nil
 }
 
 func formatEventList(list []eventOutput, header string) (string, error) {
