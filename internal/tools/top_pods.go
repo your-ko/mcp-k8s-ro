@@ -30,7 +30,7 @@ func (tool PodTopper) InputSchema() mcp.InputSchema {
 	return mcp.InputSchema{
 		Type: "object",
 		Properties: json.RawMessage(`{
-             "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"},
+             "namespace": {"type":"string","description":"Namespace (omit for cluster-scoped resources)"}
          }`),
 	}
 }
