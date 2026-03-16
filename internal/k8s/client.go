@@ -329,6 +329,28 @@ func (c *Client) TopPods(namespace string) (string, error) {
 	return c.Header() + string(yamlBytes), nil
 }
 
+func (c *Client) TopNodes() (string, error) {
+	nodeMetrics, err := c.metricClient.MetricsV1beta1().NodeMetricses().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	result := make([]nodeTopOutput, 0, len(nodeMetrics.Items))
+	for _, nodeMetric := range nodeMetrics.Items {
+		result = append(result, nodeTopOutput{
+			Name:     nodeMetric.Name,
+			CPU:      fmt.Sprintf("%dm", nodeMetric.Usage[v1.ResourceCPU]),
+			Memory:   fmt.Sprintf("%dMi", nodeMetric.Usage[v1.ResourceMemory]),
+			Storage:  fmt.Sprintf("%dm", nodeMetric.Usage[v1.ResourceStorage]),
+			StorageE: fmt.Sprintf("%dm", nodeMetric.Usage[v1.ResourceEphemeralStorage]),
+		})
+	}
+	yamlBytes, err := yaml.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+	return c.Header() + string(yamlBytes), nil
+}
+
 func formatEventList(list []eventOutput, header string) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
