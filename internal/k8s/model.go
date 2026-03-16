@@ -34,11 +34,11 @@ type eventOutput struct {
 }
 
 type nodeTopOutput struct {
-	Name     string `yaml:"name"`
-	CPU      string `yaml:"cpu"`
-	Memory   string `yaml:"memory"`
-	Storage  string `yaml:"storage"`
-	StorageE string `yaml:"storageE"`
+	Name      string `yaml:"name"`
+	CPU       string `yaml:"cpu"`
+	CPUPct    string `yaml:"cpu%"`
+	Memory    string `yaml:"memory"`
+	MemoryPct string `yaml:"memory%"`
 }
 
 type podTopOutput struct {

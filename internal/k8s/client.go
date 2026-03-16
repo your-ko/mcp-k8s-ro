@@ -334,14 +334,37 @@ func (c *Client) TopNodes() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	nodes, err := c.clientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	capacities := make(map[string]v1.ResourceList, len(nodes.Items))
+	for _, node := range nodes.Items {
+		capacities[node.Name] = node.Status.Allocatable
+	}
+
 	result := make([]nodeTopOutput, 0, len(nodeMetrics.Items))
 	for _, nodeMetric := range nodeMetrics.Items {
+		cpu := nodeMetric.Usage[v1.ResourceCPU]
+		mem := nodeMetric.Usage[v1.ResourceMemory]
+
+		cpuPct := ""
+		memPct := ""
+		if capacity, ok := capacities[nodeMetric.Name]; ok {
+			if capCPU := capacity.Cpu(); capCPU.MilliValue() > 0 {
+				cpuPct = fmt.Sprintf("%d%%", cpu.MilliValue()*100/capCPU.MilliValue())
+			}
+			if capMem := capacity.Memory(); capMem.Value() > 0 {
+				memPct = fmt.Sprintf("%d%%", mem.Value()*100/capMem.Value())
+			}
+		}
+
 		result = append(result, nodeTopOutput{
-			Name:     nodeMetric.Name,
-			CPU:      fmt.Sprintf("%dm", nodeMetric.Usage[v1.ResourceCPU]),
-			Memory:   fmt.Sprintf("%dMi", nodeMetric.Usage[v1.ResourceMemory]),
-			Storage:  fmt.Sprintf("%dm", nodeMetric.Usage[v1.ResourceStorage]),
-			StorageE: fmt.Sprintf("%dm", nodeMetric.Usage[v1.ResourceEphemeralStorage]),
+			Name:      nodeMetric.Name,
+			CPU:       fmt.Sprintf("%dm", cpu.MilliValue()),
+			CPUPct:    cpuPct,
+			Memory:    fmt.Sprintf("%dMi", mem.Value()/1024/1024),
+			MemoryPct: memPct,
 		})
 	}
 	yamlBytes, err := yaml.Marshal(result)
