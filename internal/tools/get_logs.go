@@ -31,6 +31,8 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
 		Properties: json.RawMessage(`{
              "name":  {"type":"string","description":"Pod name"},
              "namespace": {"type":"string","description":"Namespace"},
+             "container": {"type":"string","description":"Container selector"},
+             "previous": {"type":"bool","description":"Show logs from a crashed/restarted container (kubectl logs --previous). Useful for debugging crashloops."},
              "tailLines": {"type":"integer","description":"Number of lines to tail. 0 or none is to fetch everything"}
          }`),
 		Required: []string{"name"},
@@ -41,6 +43,8 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 	var p struct {
 		Name      string `json:"name"`
 		Namespace string `json:"namespace"`
+		Container string `json:"container"`
+		Previous  bool   `json:"previous"`
 		TailLines int64  `json:"tailLines"`
 	}
 	err := json.Unmarshal(params, &p)
@@ -48,5 +52,5 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	return tool.client.GetLogs(p.Name, p.Namespace, p.TailLines)
+	return tool.client.GetLogs(p.Name, p.Namespace, p.TailLines, p.Previous, p.Container)
 }
