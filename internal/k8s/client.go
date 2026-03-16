@@ -186,7 +186,7 @@ func (c *Client) GetLogs(podName string, namespace string, tailLines int64, prev
 		opts.Container = container
 	}
 	opts.Previous = previous
-	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{TailLines: &tailLines})
+	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, opts)
 	podLogs, err := request.Stream(context.TODO())
 	if err != nil {
 		return "", err
