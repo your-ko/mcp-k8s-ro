@@ -205,7 +205,7 @@ var skipGroups = map[string]bool{
 	"coordination.k8s.io":    true, // leases (internal leader election)
 }
 
-func (c *Client) GetApiResources(groupFilter string) (string, error) {
+func (c *Client) ListApiResources(groupFilter string) (string, error) {
 	resources, err := c.discovery.ServerPreferredResources()
 	if err != nil {
 		return "", err
