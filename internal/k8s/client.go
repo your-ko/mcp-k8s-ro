@@ -177,11 +177,15 @@ func getContainerInfo(item unstructured.Unstructured) (string, error) {
 	return fmt.Sprintf("%v/%v", ready, total), nil
 }
 
-func (c *Client) GetLogs(podName string, namespace string, tailLines int64) (string, error) {
+func (c *Client) GetLogs(podName string, namespace string, tailLines int64, previous bool, container string) (string, error) {
 	opts := &v1.PodLogOptions{}
 	if tailLines > 0 {
 		opts.TailLines = &tailLines
 	}
+	if container != "" {
+		opts.Container = container
+	}
+	opts.Previous = previous
 	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{TailLines: &tailLines})
 	podLogs, err := request.Stream(context.TODO())
 	if err != nil {
