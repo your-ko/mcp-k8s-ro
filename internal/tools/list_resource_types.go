@@ -42,5 +42,5 @@ func (tool ListResourceTypes) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tool.client.GetApiResources(p.ApiGroup)
+	return tool.client.ListApiResources(p.ApiGroup)
 }
