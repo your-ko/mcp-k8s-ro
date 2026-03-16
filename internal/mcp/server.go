@@ -28,7 +28,8 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 	if request.ID == nil {
 		return nil, nil
 	}
-	if request.Method == "initialize" {
+	switch request.Method {
+	case "initialize":
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      request.ID,
@@ -38,7 +39,7 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 				Capabilities:    Capabilities{},
 			},
 		}, nil
-	} else if request.Method == "tools/list" {
+	case "tools/list":
 		toolDefs := make([]ToolDefinition, 0, len(s.tools))
 		for _, tool := range s.tools {
 			toolDefs = append(toolDefs, ToolDefinition{
@@ -52,7 +53,7 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 			ID:      request.ID,
 			Result:  map[string]any{"tools": toolDefs},
 		}, nil
-	} else if request.Method == "tools/call" {
+	case "tools/call":
 		var p struct {
 			Name      string          `json:"name"`
 			Arguments json.RawMessage `json:"arguments"`
