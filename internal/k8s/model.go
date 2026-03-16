@@ -33,6 +33,14 @@ type eventOutput struct {
 	LastTime  yamlTime `yaml:"lastTime"`
 }
 
+type nodeTopOutput struct {
+	Name      string `yaml:"name"`
+	CPU       string `yaml:"cpu"`
+	CPUPct    string `yaml:"cpu%"`
+	Memory    string `yaml:"memory"`
+	MemoryPct string `yaml:"memory%"`
+}
+
 type podTopOutput struct {
 	Name       string               `yaml:"name"`
 	Namespace  string               `yaml:"namespace"`
