@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -186,7 +187,12 @@ func (c *Client) GetLogs(podName string, namespace string, tailLines int64) (str
 	if err != nil {
 		return "", err
 	}
-	defer podLogs.Close()
+	defer func(podLogs io.ReadCloser) {
+		err := podLogs.Close()
+		if err != nil {
+			slog.Error("can't close pod log reader", "error", err)
+		}
+	}(podLogs)
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
