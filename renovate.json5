@@ -1,0 +1,115 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    'customManagers:dockerfileVersions',
+  ],
+  gomod: {
+    enabled: true,
+    postUpdateOptions: [
+      'gomodTidy',
+      'gomodUpdateImportPaths',
+    ],
+  },
+  customManagers: [
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^\\.github/workflows/.+\\.ya?ml$/',
+        '/^Makefile$/',
+      ],
+      matchStrings: [
+        '(?:^|\\n)\\s*# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s*\\n\\s*(?:.*VERSION.*|version)[:=]\\s*(?<currentValue>\\S+)',
+      ],
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Dockerfile[^/]*$/',
+      ],
+      matchStrings: [
+        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*[\\r\\n]+ARG\\s+\\w+_VERSION=(?<currentValue>\\S+)',
+      ],
+      versioningTemplate: '{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}',
+    },
+  ],
+  packageRules: [
+    {
+      matchManagers: [
+        'gomod',
+      ],
+      matchDepTypes: [
+        'indirect',
+      ],
+      enabled: true,
+    },
+    {
+      matchManagers: [
+        'gomod',
+      ],
+      matchDepTypes: [
+        'direct',
+      ],
+    },
+    {
+      matchManagers: [
+        'gomod',
+      ],
+      matchDepNames: [
+        'go',
+      ],
+      matchDepTypes: [
+        'golang',
+      ],
+      labels: [
+        'go-version',
+        'chore',
+      ],
+    },
+    {
+      matchManagers: [
+        'github-actions',
+      ],
+      groupName: 'GitHub Actions',
+      labels: [
+        'github-actions',
+        'chore',
+      ],
+    },
+    {
+      matchManagers: [
+        'dockerfile',
+      ],
+      groupName: 'Docker images',
+      labels: [
+        'docker',
+        'chore',
+      ],
+    },
+    {
+      matchPackageNames: [
+        'ghcr.io/your-ko/mcp-k8s-ro',
+        'your-ko/mcp-k8s-ro',
+      ],
+      automerge: true,
+      automergeType: 'pr',
+      automergeStrategy: 'merge',
+      pruneBranchAfterAutomerge: true,
+      commitMessagePrefix: 'chore(deps): ',
+      commitMessageTopic: 'mcp-k8s-ro',
+      commitMessageExtra: 'to {{newVersion}}',
+      labels: [
+        'self-update',
+        'chore',
+      ],
+    },
+  ],
+  prConcurrentLimit: 3,
+  prHourlyLimit: 2,
+  timezone: 'UTC',
+  labels: [
+    'dependencies',
+    'chore',
+  ],
+  reviewersFromCodeOwners: true,
+}
