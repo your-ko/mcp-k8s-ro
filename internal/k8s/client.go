@@ -100,7 +100,7 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 	if err != nil {
 		return "", err
 	}
-	return formatResourcesList(normaliseList(list), c.Header())
+	return serializeList(normaliseList(list), c.Header())
 }
 
 func (c *Client) Header() string {
@@ -341,7 +341,7 @@ func (c *Client) ListApiResources(groupFilter string) (string, error) {
 		}
 	}
 
-	return formatApiList(result, c.Header())
+	return serializeList(result, c.Header())
 }
 
 func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
@@ -389,7 +389,7 @@ func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 		return !result[left].LastTime.Before(&result[right].LastTime.MicroTime)
 	})
 
-	return formatEventList(result, c.Header())
+	return serializeList(result, c.Header())
 }
 
 func (c *Client) TopPods(namespace string) (string, error) {
@@ -473,23 +473,7 @@ func (c *Client) TopNodes() (string, error) {
 	return c.Header() + string(yamlBytes), nil
 }
 
-func formatEventList(list []eventOutput, header string) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	return header + string(yamlBytes), nil
-}
-
-func formatApiList(list []apiResourcesOutput, header string) (string, error) {
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	return header + string(yamlBytes), nil
-}
-
-func formatResourcesList(list []listResourcesOutput, header string) (string, error) {
+func serializeList[T any](list []T, header string) (string, error) {
 	yamlBytes, err := yaml.Marshal(list)
 	if err != nil {
 		return "", err
