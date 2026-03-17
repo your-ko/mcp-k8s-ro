@@ -19,3 +19,9 @@ test:
 
 clean:
 	rm -f $(BINARY)
+
+docker-build:
+	docker build . -t mcp-k8s-ro
+
+generate-mocks:
+	docker run --rm -v "$$PWD:/src" -w /src/ vektra/mockery:${MOCKERY_VERSION}
