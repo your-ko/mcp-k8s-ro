@@ -68,7 +68,7 @@ jobs:
       - name: Package artifact
         run: |
           ARCHIVE="mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.zip"
-          zip "$ARCHIVE" mcp-k8s-ro README.md
+          zip "$ARCHIVE" mcp-k8s-ro README.md LICENSE
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
 
       - name: Upload artifact
