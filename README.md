@@ -27,16 +27,16 @@ A read-only MCP server that gives Claude access to Kubernetes clusters. Built in
 |----------------------|------------------|-------------------------|
 | `KUBECONFIG`         | `~/.kube/config` | Path to kubeconfig file |
 
-## Build
+## Usage with Claude
+
+### Binary
+
+Build the binary and add it to your Claude Desktop or `claude` CLI configuration:
 
 ```bash
 make build
 # binary is written to bin/mcp-k8s-ro
 ```
-
-## Usage with Claude
-
-Add the server to your Claude Desktop or `claude` CLI configuration:
 
 ```json
 {
@@ -51,6 +51,51 @@ Add the server to your Claude Desktop or `claude` CLI configuration:
 }
 ```
 
-The server locks to the current kubeconfig context at startup. The active context and cluster name are included in 
-every tool response so you always know which cluster Claude is talking to.
+### Docker
+
+Pull the image from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/your-ko/mcp-k8s-ro:latest 
+```
+or pin a particular version (recommended)
+
+Add it to your Claude Desktop or `claude` CLI configuration. The kubeconfig directory is mounted read-only into the container:
+
+```json
+{
+  "mcpServers": {
+    "k8s": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-v", "/Users/you/.kube:/home/nonroot/.kube:ro",
+        "ghcr.io/your-ko/mcp-k8s-ro:latest"
+      ]
+    }
+  }
+}
+```
+
+If your kubeconfig is in a non-standard location, pass it via `KUBECONFIG`:
+
+```json
+{
+  "mcpServers": {
+    "k8s": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "KUBECONFIG=/config/my-kubeconfig",
+        "-v", "/path/to/my-kubeconfig:/config/my-kubeconfig:ro",
+        "ghcr.io/your-ko/mcp-k8s-ro:latest"
+      ]
+    }
+  }
+}
+```
+
+The server locks to the current kubeconfig context at startup. 
+The active context and cluster name are included in every tool response so you always know which 
+cluster Claude is talking to.
 
