@@ -28,13 +28,13 @@ import (
 )
 
 type Client struct {
-	dynamic      dynamic.Interface
-	discovery    *discovery.DiscoveryClient
-	mapper       meta.RESTMapper // resolves "pods" → GVR
-	clientSet    *kubernetes.Clientset
-	contextName  string
-	clusterName  string
-	metricClient *metrics.Clientset
+	dynamicClient   dynamic.Interface
+	discoveryClient *discovery.DiscoveryClient
+	mapper          meta.RESTMapper
+	clientSet       *kubernetes.Clientset
+	metricClient    *metrics.Clientset
+	contextName     string
+	clusterName     string
 }
 
 func NewClient(config *rest.Config, contextName string, clusterName string) (*Client, error) {
@@ -59,13 +59,13 @@ func NewClient(config *rest.Config, contextName string, clusterName string) (*Cl
 	}
 
 	return &Client{
-		dynamic:      dyn,
-		discovery:    disc,
-		mapper:       mapper,
-		clientSet:    clientSet,
-		contextName:  contextName,
-		clusterName:  clusterName,
-		metricClient: metricClient,
+		dynamicClient:   dyn,
+		discoveryClient: disc,
+		mapper:          mapper,
+		clientSet:       clientSet,
+		contextName:     contextName,
+		clusterName:     clusterName,
+		metricClient:    metricClient,
 	}, nil
 }
 
@@ -93,9 +93,9 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 	}
 	var list *unstructured.UnstructuredList
 	if namespaced && namespace != "" {
-		list, err = c.dynamic.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		list, err = c.dynamicClient.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	} else {
-		list, err = c.dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
+		list, err = c.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
 		return "", err
@@ -240,9 +240,9 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 
 	var res *unstructured.Unstructured
 	if namespaced && namespace != "" {
-		res, err = c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		res, err = c.dynamicClient.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	} else {
-		res, err = c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+		res, err = c.dynamicClient.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 	}
 	if err != nil {
 		return "", err
@@ -305,7 +305,7 @@ var skipGroups = map[string]bool{
 }
 
 func (c *Client) ListApiResources(groupFilter string) (string, error) {
-	resources, err := c.discovery.ServerPreferredResources()
+	resources, err := c.discoveryClient.ServerPreferredResources()
 	if err != nil {
 		return "", err
 	}
@@ -330,8 +330,6 @@ func (c *Client) ListApiResources(groupFilter string) (string, error) {
 				// no need to return them as well
 				continue
 			}
-			//fmt.Fprintln(os.Stderr, apiGroup.GroupVersion)
-
 			result = append(result, apiResourcesOutput{
 				Name:       r.Name,
 				Kind:       r.Kind,
