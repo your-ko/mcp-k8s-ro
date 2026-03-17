@@ -65,13 +65,13 @@ jobs:
             type=raw,value=${{ inputs.version }}
             type=raw,value=latest
             type=sha,prefix=sha256-,format=long
+#            org.opencontainers.image.licenses=MIT
           labels: |
             org.opencontainers.image.title=mcp-k8s-ro
             org.opencontainers.image.description=Read-only MCP server for Kubernetes
             org.opencontainers.image.url=https://github.com/your-ko/mcp-k8s-ro
             org.opencontainers.image.source=https://github.com/your-ko/mcp-k8s-ro
             org.opencontainers.image.vendor=your-ko
-#            org.opencontainers.image.licenses=MIT
             org.opencontainers.image.version=${{ inputs.version }}
             org.opencontainers.image.created=${{ steps.timestamp.outputs.BUILD_DATE }}
             org.opencontainers.image.revision=${{ github.sha }}
