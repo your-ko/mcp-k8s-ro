@@ -1,5 +1,7 @@
 BINARY := mcp-k8s-ro
 MODULE := github.com/your-ko/mcp-k8s-ro
+# renovate: datasource=github-releases depName=vektra/mockery versioning=semver
+MOCKERY_VERSION=v3.7.0
 
 .PHONY: build run test clean tidy
 
