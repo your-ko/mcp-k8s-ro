@@ -13,6 +13,6 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  internal/k8s:
+  mcp-k8s-ro/internal/k8s:
     config:
       all: true
