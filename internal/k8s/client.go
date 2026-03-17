@@ -247,6 +247,18 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	if err != nil {
 		return "", err
 	}
+	if res.GetKind() == "Secret" {
+		if data, ok, err := unstructured.NestedMap(res.Object, "data"); ok && err == nil {
+			secrets := make(map[string]interface{})
+			for key := range data {
+				secrets[key] = "*****"
+			}
+			err := unstructured.SetNestedMap(res.Object, secrets, "data")
+			if err != nil {
+				return "", err
+			}
+		}
+	}
 	yamlBytes, err := yaml.Marshal(res.Object)
 	if err != nil {
 		return "", err
