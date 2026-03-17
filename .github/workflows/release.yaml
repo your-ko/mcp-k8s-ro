@@ -11,8 +11,8 @@ on:
 permissions:
   packages: write           # Required for push to GHCR
   contents: write           # Required to create a release with notes
-  attestations: write       # Required for Docker image attestation
-  id-token: write           # OIDC for cosign keyless + attestations
+#  attestations: write       # Required for Docker image attestation (public repos only)
+#  id-token: write           # OIDC for cosign keyless + attestations (public repos only)
 
 env:
   DOCKER_IMAGE_NAME: ghcr.io/your-ko/mcp-k8s-ro
@@ -89,11 +89,12 @@ jobs:
             VERSION=${{ inputs.version }}
             BUILD_DATE=${{ steps.timestamp.outputs.BUILD_DATE }}
             GIT_COMMIT=${{ github.sha }}
-          provenance: mode=max
-          sbom: true
+#          provenance: mode=max   # requires public repo or GitHub Advanced Security
+#          sbom: true             # requires public repo or GitHub Advanced Security
           push: true
 
 #  attest:
+#    # Requires public repo or GitHub Advanced Security
 #    runs-on: ubuntu-24.04
 #    needs: build
 #    steps:
@@ -133,101 +134,40 @@ jobs:
 #          name: sbom
 #          path: sbom.spdx.json
 
-  prepare-attestations-for-release:
-    runs-on: ubuntu-24.04
-#    needs: [build, attest]
-    needs: [build]
-    steps:
-      - name: Download provenance attestation with retry
-        env:
-          DIGEST: ${{ needs.build.outputs.digest }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          echo "📥 Downloading provenance attestation..."
-          echo "  Image: ${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}"
-
-          # Retry logic with exponential backoff
-          max_attempts=6
-          attempt=1
-          delay=10
-
-          while [ $attempt -le $max_attempts ]; do
-            echo "🔄 Attempt $attempt of $max_attempts..."
-
-            if gh attestation download "oci://${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}" \
-               --repo "${{env.GITHUB_REPOSITORY}}" > provenance.intoto.jsonl; then
-              echo "✅ Downloaded provenance attestation on attempt $attempt"
-              echo "📏 File size: $(wc -c < provenance.intoto.jsonl) bytes"
-              echo "📄 Line count: $(wc -l < provenance.intoto.jsonl) lines"
-              break
-            fi
-
-            if [ $attempt -eq $max_attempts ]; then
-              echo "❌ Failed after $max_attempts attempts, creating placeholder"
-              echo '{"_type":"https://in-toto.io/Statement/v0.1","predicateType":"https://slsa.dev/provenance/v0.2","subject":[{"name":"'${{env.DOCKER_IMAGE_NAME}}'","digest":{"sha256":"'${DIGEST#sha256:}'"}}],"predicate":{"builder":{"id":"https://github.com/'${{env.GITHUB_REPOSITORY}}'/.github/workflows/release.yaml@'${{github.ref}}'"}}}' > provenance.intoto.jsonl
-              break
-            fi
-
-            echo "⏳ Waiting ${delay}s before retry..."
-            sleep $delay
-            delay=$((delay * 2))  # Exponential backoff: 10s, 20s, 40s, 80s, 160s
-            attempt=$((attempt + 1))
-          done
-
-      - name: Upload provenance artifact
-        uses: actions/upload-artifact@v6.0.0
-        with:
-          name: provenance
-          path: provenance.intoto.jsonl
-
-  sign:
-    runs-on: ubuntu-24.04
-    needs: build
-    steps:
-      - name: Login to GHCR
-        uses: docker/login-action@v3.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v4.1.0
-
-      - name: Keyless sign image (Sigstore)
-        env:
-          DIGEST: ${{ needs.build.outputs.digest }}
-        run: |
-          # Keyless uses GitHub OIDC; signature recorded in Rekor transparency log
-          cosign sign --yes ${{ env.DOCKER_IMAGE_NAME }}@${{env.DIGEST}}
-
-      - name: Verify signature
-        env:
-          DIGEST: ${{ needs.build.outputs.digest }}
-        run: |
-          cosign verify "${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}" \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp "^https://github.com/your-ko/mcp-k8s-ro/\.github/workflows/.*"
+#  sign:
+#    # Cosign keyless signing uses Sigstore public Rekor log — requires public repo
+#    runs-on: ubuntu-24.04
+#    needs: build
+#    steps:
+#      - name: Login to GHCR
+#        uses: docker/login-action@v3.7.0
+#        with:
+#          registry: ghcr.io
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Install cosign
+#        uses: sigstore/cosign-installer@v4.1.0
+#
+#      - name: Keyless sign image (Sigstore)
+#        env:
+#          DIGEST: ${{ needs.build.outputs.digest }}
+#        run: |
+#          cosign sign --yes ${{ env.DOCKER_IMAGE_NAME }}@${{env.DIGEST}}
+#
+#      - name: Verify signature
+#        env:
+#          DIGEST: ${{ needs.build.outputs.digest }}
+#        run: |
+#          cosign verify "${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}" \
+#            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+#            --certificate-identity-regexp "^https://github.com/your-ko/mcp-k8s-ro/\.github/workflows/.*"
 
   release:
     runs-on: ubuntu-24.04
-    needs: [ build, prepare-attestations-for-release, sign ]
+    needs: [ build ]
     steps:
       - uses: actions/checkout@v6.0.2
-
-      - name: Download SBOM artifact
-        uses: actions/download-artifact@v7.0.0
-        with:
-          name: sbom
-          path: .
-
-      - name: Download provenance artifact
-        uses: actions/download-artifact@v7.0.0
-        with:
-          name: provenance
-          path: .
 
       - name: Create/Update GitHub Release
         env:
@@ -236,44 +176,9 @@ jobs:
           TAG: "${{inputs.version}}"
         run: |
           TAG="${{ inputs.version }}"
-          PKG_URL="https://github.com/${{env.GITHUB_REPOSITORY}}/pkgs/container/${{env.DOCKER_IMAGE_NAME}}?tag=${TAG}"
 
-          # Create supply-chain metadata content
-          cat > SUPPLY_CHAIN_NOTES.md <<EOF
-
-          ---
-
-          ## 🔐 Supply Chain Security
-
-          This release includes signed container images with attestations. See [Security Documentation](https://github.com/${{env.GITHUB_REPOSITORY}}#security--supply-chain) for verification instructions.
-
-          **Container:** \`${{env.DOCKER_IMAGE_NAME}}:${TAG}\` ([GHCR package](${PKG_URL}))
-          **Digest:** \`${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}\`
-          **Attestations:** [GitHub attestations](https://github.com/${{env.GITHUB_REPOSITORY}}/attestations?type=provenance&subject_name=${{env.DOCKER_IMAGE_NAME}}&subject_digest=${{env.DIGEST}}) • [Container attestations](https://github.com/${{env.GITHUB_REPOSITORY}}/pkgs/container/mcp-k8s-ro/${{env.DIGEST}})
-          **Artifacts:** [SBOM](https://github.com/${{env.GITHUB_REPOSITORY}}/releases/download/${TAG}/sbom.spdx.json) • [Provenance](https://github.com/${{env.GITHUB_REPOSITORY}}/releases/download/${TAG}/provenance.intoto.jsonl) • [Checksums](https://github.com/${{env.GITHUB_REPOSITORY}}/releases/download/${TAG}/SHASUMS256.txt)
-
-          EOF
-
-          # Create or update release with enhanced notes
           if gh release view "${{env.TAG}}" >/dev/null 2>&1; then
-            # Update existing release by appending supply chain info
-            EXISTING_NOTES=$(gh release view "${{env.TAG}}" --json body --jq '.body')
-            {
-              echo "$EXISTING_NOTES"
-              cat SUPPLY_CHAIN_NOTES.md
-            } > COMBINED_NOTES.md
-            gh release edit "${{env.TAG}}" --notes-file COMBINED_NOTES.md --latest
+            gh release edit "${{env.TAG}}" --generate-notes --latest
           else
-            # Create new release with auto-generated notes + supply chain info
             gh release create "${{env.TAG}}" --generate-notes --latest
-            GENERATED_NOTES=$(gh release view "${{env.TAG}}" --json body --jq '.body')
-            {
-              echo "$GENERATED_NOTES"
-              cat SUPPLY_CHAIN_NOTES.md
-            } > COMBINED_NOTES.md
-            gh release edit "${{env.TAG}}" --notes-file COMBINED_NOTES.md
           fi
-
-          # Upload SBOM + provenance + checksums
-          sha256sum sbom.spdx.json provenance.intoto.jsonl | tee SHASUMS256.txt
-          gh release upload "${{env.TAG}}" sbom.spdx.json provenance.intoto.jsonl SHASUMS256.txt --clobber
