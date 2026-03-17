@@ -182,20 +182,24 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 			}
 		}
 		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
-			conditionsStatus := make([]string, 0, len(conditions))
+			ready := "NotReady"
+			problems := make([]string, 0)
 			for _, condition := range conditions {
 				conditionMap := condition.(map[string]interface{})
-				if status, ok := conditionMap["status"].(string); ok && status == "True" {
-					if typ, ok := conditionMap["type"].(string); ok {
-						conditionsStatus = append(conditionsStatus, typ)
-						if typ == "Ready" {
-							// between all node conditions we found Status:Ready, so there is no need to continue
-							break
-						}
-					}
+				typ, _ := conditionMap["type"].(string)
+				status, _ := conditionMap["status"].(string)
+				if typ == "Ready" && status == "True" {
+					ready = "Ready"
+				} else if typ != "Ready" && status == "True" {
+					// pressure/unavailable conditions — True means problem
+					problems = append(problems, typ)
 				}
 			}
-			res.Status = strings.Join(conditionsStatus, ",")
+			if len(problems) > 0 {
+				res.Status = ready + "," + strings.Join(problems, ",")
+			} else {
+				res.Status = ready
+			}
 		}
 	}
 }
