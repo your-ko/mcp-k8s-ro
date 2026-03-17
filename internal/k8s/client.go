@@ -250,7 +250,7 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	if res.GetKind() == "Secret" {
 		if data, ok, err := unstructured.NestedMap(res.Object, "data"); ok && err == nil {
 			secrets := make(map[string]interface{})
-			for key, _ := range data {
+			for key := range data {
 				secrets[key] = "*****"
 			}
 			err := unstructured.SetNestedMap(res.Object, secrets, "data")
