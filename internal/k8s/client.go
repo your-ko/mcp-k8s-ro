@@ -115,12 +115,10 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 	result := make([]listResourcesOutput, 0)
 	for _, item := range list.Items {
 		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
-		containersStatus, _ := getContainerInfo(item)
 		res := listResourcesOutput{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Status:    status,
-			Ready:     containersStatus,
 			Created:   item.GetCreationTimestamp().UTC().Format(time.DateTime),
 		}
 		setResourceSpecificFields(item, &res)
@@ -160,6 +158,7 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 			res.PodIP = podIP
 		}
 		restarts := 0
+		readyCount := 0
 		waitingReasons := make([]string, 0)
 		lastTermReasons := make([]string, 0)
 		if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
@@ -167,6 +166,9 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 				cStatusMap := cStatus.(map[string]interface{})
 				if rc, ok := cStatusMap["restartCount"].(int64); ok {
 					restarts += int(rc)
+				}
+				if isReady, ok := cStatusMap["ready"].(bool); ok && isReady {
+					readyCount++
 				}
 				if stateMap, ok := cStatusMap["state"].(map[string]interface{}); ok {
 					if waiting, ok := stateMap["waiting"].(map[string]interface{}); ok {
@@ -183,6 +185,7 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 					}
 				}
 			}
+			res.Ready = fmt.Sprintf("%d/%d", readyCount, len(containerStatuses))
 		}
 		res.Restarts = restarts
 		if len(waitingReasons) > 0 {
@@ -249,34 +252,6 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return "", err
 	}
 	return c.Header() + string(yamlBytes), nil
-}
-
-func getContainerInfo(item unstructured.Unstructured) (string, error) {
-	if item.GetKind() != "Pod" {
-		return "", nil
-	}
-
-	containerStatuses, found, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses")
-	if err != nil {
-		// TODO: Do I really need to return err?
-		return "", err
-	}
-	if !found {
-		return "", nil
-	}
-	total := len(containerStatuses)
-	ready := 0
-	for _, cs := range containerStatuses {
-		container, ok := cs.(map[string]any)
-		if !ok {
-			continue
-		}
-		if isReady, ok := container["ready"].(bool); ok && isReady {
-			ready++
-		}
-	}
-
-	return fmt.Sprintf("%v/%v", ready, total), nil
 }
 
 func (c *Client) GetLogs(podName string, namespace string, tailLines int64, previous bool, container string) (string, error) {
