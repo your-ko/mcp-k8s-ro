@@ -13,10 +13,10 @@ type listResourcesOutput struct {
 	ClusterIP  string `yaml:"clusterIP,omitempty"`
 	ExternalIP string `yaml:"externalIP,omitempty"`
 	InternalIP string `yaml:"internalIP,omitempty"`
-	IP         string `yaml:"IP,omitempty"`
+	PodIP      string `yaml:"podIP,omitempty"`
 	Ports      string `yaml:"ports,omitempty"`
 	Node       string `yaml:"node,omitempty"`
-	Restarts   string `yaml:"restarts,omitempty"`
+	Restarts   int    `yaml:"restarts,omitempty"`
 	Status     string `yaml:"status,omitempty"`
 	Ready      string `yaml:"ready,omitempty"`
 	Created    string `yaml:"created,omitempty"`

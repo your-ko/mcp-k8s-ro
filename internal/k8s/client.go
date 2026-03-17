@@ -120,7 +120,6 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Status:    status,
-			Type:      fmt.Sprintf("%s", item.Object["type"]),
 			Ready:     containersStatus,
 			Created:   item.GetCreationTimestamp().UTC().Format(time.DateTime),
 		}
@@ -150,12 +149,22 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 			if nodeName, ok, err := unstructured.NestedString(item.Object, "spec", "nodeName"); ok && err == nil {
 				res.Node = nodeName
 			}
-			if podIp, ok, err := unstructured.NestedString(item.Object, "status", "podIp"); ok && err == nil {
-				res.IP = podIp
+			if podIP, ok, err := unstructured.NestedString(item.Object, "status", "podIP"); ok && err == nil {
+				res.PodIP = podIP
 			}
+			restarts := 0
+			if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
+				for _, cStatus := range containerStatuses {
+					cStatusMap := cStatus.(map[string]interface{})
+					if rc, ok := cStatusMap["restartCount"].(int64); ok {
+						restarts += int(rc)
+					}
+				}
+			}
+			res.Restarts = restarts
+
 		}
 		result = append(result, res)
-
 	}
 	return result
 }
