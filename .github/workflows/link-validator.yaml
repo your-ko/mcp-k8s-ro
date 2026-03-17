@@ -1,0 +1,29 @@
+name: Link validation
+on:
+  push:
+    branches:
+      - master
+      - main
+permissions:
+  contents: read
+env:
+  DOCKER_VALIDATOR: ghcr.io/your-ko/link-validator
+  # renovate: datasource=github-releases depName=your-ko/link-validator versioning=semver
+  DOCKER_VALIDATOR_VERSION: 2.3.0
+jobs:
+  link-validator:
+    name: link-validator
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+      - name: Link validation
+        id: lnk
+        shell: bash
+        run: |
+          docker run --rm \
+            -e 'LOG_LEVEL=debug' \
+            -e 'PAT=${{ secrets.GITHUB_TOKEN }}' \
+            -v "${{ github.workspace }}:/work" \
+            -w /work \
+            ${DOCKER_VALIDATOR}:${DOCKER_VALIDATOR_VERSION}
