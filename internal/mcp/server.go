@@ -36,6 +36,7 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 			Result: InitialisationResult{
 				ProtocolVersion: "2024-11-05",
 				ServerInfo:      ServerInfo{Name: s.name, Version: s.version, ClusterName: s.clusterName, ContextName: s.contextName},
+				Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
 				Capabilities:    Capabilities{},
 			},
 		}, nil
