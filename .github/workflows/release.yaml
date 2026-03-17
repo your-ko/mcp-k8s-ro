@@ -10,7 +10,7 @@ on:
 
 permissions:
   packages: write           # Required for push to GHCR
-  contents: write           # Required to create a release with notes
+  contents: write           # Required to create a release and upload artifacts
 #  attestations: write       # Required for Docker image attestation (public repos only)
 #  id-token: write           # OIDC for cosign keyless + attestations (public repos only)
 
@@ -19,16 +19,70 @@ env:
   GITHUB_REPOSITORY: your-ko/mcp-k8s-ro
 
 jobs:
-  build:
+  build-binaries:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: actions/setup-go@v6.3.0
+        with:
+          go-version-file: './go.mod'
+          cache-dependency-path: './go.sum'
+
+      - name: Go Test
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+        run: |
+          go test -race ./cmd/... ./internal/...
+
+      - name: Generate build timestamp
+        id: timestamp
+        run: echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+        run: |
+          go build \
+            -ldflags "-X main.GitCommit=${{ github.sha }} \
+                      -X main.BuildDate=${{ steps.timestamp.outputs.BUILD_DATE }} \
+                      -X main.Version=${{ inputs.version }}" \
+            -o mcp-k8s-ro \
+            ./cmd/mcp-k8s-ro/
+
+      - name: Package artifact
+        run: |
+          ARCHIVE="mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.zip"
+          zip "$ARCHIVE" mcp-k8s-ro README.md
+          echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: mcp-k8s-ro-${{ matrix.os }}-${{ matrix.arch }}
+          path: mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.zip
+
+  build-docker:
     runs-on: ubuntu-24.04
     outputs:
       digest: ${{ steps.docker.outputs.digest }}
     steps:
       - uses: actions/checkout@v6.0.2
-      - name: SetUp
-        run: |
-          git config --local user.name  "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.12.0
@@ -39,18 +93,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-go@v6.3.0
-        with:
-          go-version-file: './go.mod'
-          cache-dependency-path: './go.sum'
-
-      - name: Go Test
-        shell: bash
-        env:
-          CGO_ENABLED: 1
-        run: |
-           go test -race ./cmd/... ./internal/...
 
       - name: Generate build timestamp
         id: timestamp
@@ -93,51 +135,10 @@ jobs:
 #          sbom: true             # requires public repo or GitHub Advanced Security
           push: true
 
-#  attest:
-#    # Requires public repo or GitHub Advanced Security
-#    runs-on: ubuntu-24.04
-#    needs: build
-#    steps:
-#      - name: Login to GHCR
-#        uses: docker/login-action@v3.7.0
-#        with:
-#          registry: ghcr.io
-#          username: ${{ github.actor }}
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: Attest build provenance (GitHub)
-#        uses: actions/attest-build-provenance@v3.2.0
-#        with:
-#          subject-name: ${{ env.DOCKER_IMAGE_NAME }}
-#          subject-digest: ${{ needs.build.outputs.digest }}
-#          push-to-registry: true
-#          show-summary: 'true'
-#
-#      - name: Generate SBOM (SPDX)
-#        uses: anchore/sbom-action@v0.23.1
-#        with:
-#          image: ${{ env.DOCKER_IMAGE_NAME }}@${{ needs.build.outputs.digest }}
-#          format: spdx-json
-#          output-file: sbom.spdx.json
-#
-#      - name: Attest SBOM (GitHub)
-#        uses: actions/attest-sbom@v3.0.0
-#        with:
-#          subject-name: ${{ env.DOCKER_IMAGE_NAME }}
-#          subject-digest: ${{ needs.build.outputs.digest }}
-#          sbom-path: sbom.spdx.json
-#          push-to-registry: true
-#
-#      - name: Upload SBOM artifact
-#        uses: actions/upload-artifact@v6.0.0
-#        with:
-#          name: sbom
-#          path: sbom.spdx.json
-
 #  sign:
 #    # Cosign keyless signing uses Sigstore public Rekor log — requires public repo
 #    runs-on: ubuntu-24.04
-#    needs: build
+#    needs: build-docker
 #    steps:
 #      - name: Login to GHCR
 #        uses: docker/login-action@v3.7.0
@@ -151,13 +152,13 @@ jobs:
 #
 #      - name: Keyless sign image (Sigstore)
 #        env:
-#          DIGEST: ${{ needs.build.outputs.digest }}
+#          DIGEST: ${{ needs.build-docker.outputs.digest }}
 #        run: |
 #          cosign sign --yes ${{ env.DOCKER_IMAGE_NAME }}@${{env.DIGEST}}
 #
 #      - name: Verify signature
 #        env:
-#          DIGEST: ${{ needs.build.outputs.digest }}
+#          DIGEST: ${{ needs.build-docker.outputs.digest }}
 #        run: |
 #          cosign verify "${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}" \
 #            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
@@ -165,20 +166,24 @@ jobs:
 
   release:
     runs-on: ubuntu-24.04
-    needs: [ build ]
+    needs: [ build-binaries, build-docker ]
     steps:
       - uses: actions/checkout@v6.0.2
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7.0.0
+        with:
+          path: artifacts/
 
       - name: Create/Update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DIGEST: ${{ needs.build.outputs.digest }}
-          TAG: "${{inputs.version}}"
+          TAG: ${{ inputs.version }}
         run: |
-          TAG="${{ inputs.version }}"
-
-          if gh release view "${{env.TAG}}" >/dev/null 2>&1; then
-            gh release edit "${{env.TAG}}" --generate-notes --latest
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --generate-notes --latest
           else
-            gh release create "${{env.TAG}}" --generate-notes --latest
+            gh release create "$TAG" --generate-notes --latest
           fi
+
+          find artifacts/ -name "*.zip" | xargs gh release upload "$TAG" --clobber
