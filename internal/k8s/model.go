@@ -7,11 +7,19 @@ import (
 )
 
 type listResourcesOutput struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace,omitempty"`
-	Status    string `yaml:"status,omitempty"`
-	Ready     string `yaml:"ready,omitempty"`
-	Created   string `yaml:"created,omitempty"`
+	Name       string `yaml:"name"`
+	Namespace  string `yaml:"namespace,omitempty"`
+	Type       string `yaml:"type,omitempty"`
+	ClusterIP  string `yaml:"clusterIP,omitempty"`
+	ExternalIP string `yaml:"externalIP,omitempty"`
+	InternalIP string `yaml:"internalIP,omitempty"`
+	IP         string `yaml:"IP,omitempty"`
+	Ports      string `yaml:"ports,omitempty"`
+	Node       string `yaml:"node,omitempty"`
+	Restarts   string `yaml:"restarts,omitempty"`
+	Status     string `yaml:"status,omitempty"`
+	Ready      string `yaml:"ready,omitempty"`
+	Created    string `yaml:"created,omitempty"`
 }
 
 type apiResourcesOutput struct {

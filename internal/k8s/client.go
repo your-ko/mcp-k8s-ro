@@ -116,13 +116,46 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 	for _, item := range list.Items {
 		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
 		containersStatus, _ := getContainerInfo(item)
-		result = append(result, listResourcesOutput{
+		res := listResourcesOutput{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Status:    status,
+			Type:      fmt.Sprintf("%s", item.Object["type"]),
 			Ready:     containersStatus,
 			Created:   item.GetCreationTimestamp().UTC().Format(time.DateTime),
-		})
+		}
+		switch item.GetKind() {
+		case "Secret":
+			if resourceType, ok, err := unstructured.NestedString(item.Object, "type"); ok && err == nil {
+				res.Type = resourceType
+			}
+		case "Service":
+			if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
+				if itemType, ok := spec["type"]; ok {
+					res.Type = fmt.Sprintf("%s", itemType)
+				}
+				if clusterIp, ok := spec["clusterIP"]; ok {
+					res.ClusterIP = fmt.Sprintf("%s", clusterIp)
+				}
+			}
+			portsInfo := make([]string, 0)
+			if ports, ok, err := unstructured.NestedSlice(item.Object, "spec", "ports"); ok && err == nil {
+				for _, port := range ports {
+					portMap := port.(map[string]interface{})
+					portsInfo = append(portsInfo, fmt.Sprintf("%d/%s", portMap["port"], portMap["protocol"]))
+				}
+			}
+			res.Ports = strings.Join(portsInfo, ",")
+		case "Pod":
+			if nodeName, ok, err := unstructured.NestedString(item.Object, "spec", "nodeName"); ok && err == nil {
+				res.Node = nodeName
+			}
+			if podIp, ok, err := unstructured.NestedString(item.Object, "status", "podIp"); ok && err == nil {
+				res.IP = podIp
+			}
+		}
+		result = append(result, res)
+
 	}
 	return result
 }
