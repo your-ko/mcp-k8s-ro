@@ -1,27 +1,25 @@
-name: PR
+name: Main
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
     branches:
       - master
       - main
 
 permissions:
   contents: read
+  packages: write
 
 env:
   DOCKER_IMAGE_NAME: ghcr.io/your-ko/mcp-k8s-ro
 
 jobs:
-  PR:
-    name: PR
+  Main:
+    name: Main
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-        with:
-          fetch-depth: '0'
+      - uses: actions/checkout@v6.0.2
 
       - uses: actions/setup-go@v6.3.0
         with:
@@ -30,6 +28,13 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.12.0
+
+      - name: Docker login
+        uses: docker/login-action@v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Go Vet
         shell: bash
@@ -55,8 +60,7 @@ jobs:
           tags: |
             type=sha,prefix=sha256-
             type=ref,event=branch,prefix=branch-
-            type=raw,value=PR
-#org.opencontainers.image.licenses=MIT
+#            org.opencontainers.image.licenses=MIT
           labels: |
             org.opencontainers.image.title=mcp-k8s-ro
             org.opencontainers.image.description=Read-only MCP server for Kubernetes
@@ -66,7 +70,7 @@ jobs:
             org.opencontainers.image.created=${{ steps.timestamp.outputs.BUILD_DATE }}
             org.opencontainers.image.revision=${{ github.sha }}
 
-      - name: Build image
+      - name: Build and push image
         uses: docker/build-push-action@v6.19.2
         with:
           context: .
@@ -74,7 +78,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VERSION=pr-${{ github.head_ref || github.ref_name }}
+            VERSION=branch-${{ github.ref_name }}
             BUILD_DATE=${{ steps.timestamp.outputs.BUILD_DATE }}
             GIT_COMMIT=${{ github.sha }}
+          provenance: false
           push: false
