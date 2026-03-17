@@ -34,6 +34,7 @@ type InitialisationResult struct {
 	ProtocolVersion string       `json:"protocolVersion"`
 	ServerInfo      ServerInfo   `json:"serverInfo"`
 	Capabilities    Capabilities `json:"capabilities"`
+	Instructions    string       `json:"instructions"`
 }
 
 type ServerInfo struct {
