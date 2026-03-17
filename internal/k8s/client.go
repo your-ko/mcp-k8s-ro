@@ -123,50 +123,53 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 			Ready:     containersStatus,
 			Created:   item.GetCreationTimestamp().UTC().Format(time.DateTime),
 		}
-		switch item.GetKind() {
-		case "Secret":
-			if resourceType, ok, err := unstructured.NestedString(item.Object, "type"); ok && err == nil {
-				res.Type = resourceType
-			}
-		case "Service":
-			if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
-				if itemType, ok := spec["type"]; ok {
-					res.Type = fmt.Sprintf("%s", itemType)
-				}
-				if clusterIp, ok := spec["clusterIP"]; ok {
-					res.ClusterIP = fmt.Sprintf("%s", clusterIp)
-				}
-			}
-			portsInfo := make([]string, 0)
-			if ports, ok, err := unstructured.NestedSlice(item.Object, "spec", "ports"); ok && err == nil {
-				for _, port := range ports {
-					portMap := port.(map[string]interface{})
-					portsInfo = append(portsInfo, fmt.Sprintf("%d/%s", portMap["port"], portMap["protocol"]))
-				}
-			}
-			res.Ports = strings.Join(portsInfo, ",")
-		case "Pod":
-			if nodeName, ok, err := unstructured.NestedString(item.Object, "spec", "nodeName"); ok && err == nil {
-				res.Node = nodeName
-			}
-			if podIP, ok, err := unstructured.NestedString(item.Object, "status", "podIP"); ok && err == nil {
-				res.PodIP = podIP
-			}
-			restarts := 0
-			if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
-				for _, cStatus := range containerStatuses {
-					cStatusMap := cStatus.(map[string]interface{})
-					if rc, ok := cStatusMap["restartCount"].(int64); ok {
-						restarts += int(rc)
-					}
-				}
-			}
-			res.Restarts = restarts
-
-		}
+		setResourceSpecificFields(item, &res)
 		result = append(result, res)
 	}
 	return result
+}
+
+func setResourceSpecificFields(item unstructured.Unstructured, res *listResourcesOutput) {
+	switch item.GetKind() {
+	case "Secret":
+		if resourceType, ok, err := unstructured.NestedString(item.Object, "type"); ok && err == nil {
+			res.Type = resourceType
+		}
+	case "Service":
+		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
+			if itemType, ok := spec["type"]; ok {
+				res.Type = fmt.Sprintf("%s", itemType)
+			}
+			if clusterIp, ok := spec["clusterIP"]; ok {
+				res.ClusterIP = fmt.Sprintf("%s", clusterIp)
+			}
+		}
+		portsInfo := make([]string, 0)
+		if ports, ok, err := unstructured.NestedSlice(item.Object, "spec", "ports"); ok && err == nil {
+			for _, port := range ports {
+				portMap := port.(map[string]interface{})
+				portsInfo = append(portsInfo, fmt.Sprintf("%d/%s", portMap["port"], portMap["protocol"]))
+			}
+		}
+		res.Ports = strings.Join(portsInfo, ",")
+	case "Pod":
+		if nodeName, ok, err := unstructured.NestedString(item.Object, "spec", "nodeName"); ok && err == nil {
+			res.Node = nodeName
+		}
+		if podIP, ok, err := unstructured.NestedString(item.Object, "status", "podIP"); ok && err == nil {
+			res.PodIP = podIP
+		}
+		restarts := 0
+		if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
+			for _, cStatus := range containerStatuses {
+				cStatusMap := cStatus.(map[string]interface{})
+				if rc, ok := cStatusMap["restartCount"].(int64); ok {
+					restarts += int(rc)
+				}
+			}
+		}
+		res.Restarts = restarts
+	}
 }
 
 func (c *Client) GetResource(ctx context.Context, name string, resource string, namespace string) (string, error) {
