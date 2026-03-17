@@ -116,15 +116,117 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 	for _, item := range list.Items {
 		status, _, _ := unstructured.NestedString(item.Object, "status", "phase")
 		containersStatus, _ := getContainerInfo(item)
-		result = append(result, listResourcesOutput{
+		res := listResourcesOutput{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Status:    status,
 			Ready:     containersStatus,
 			Created:   item.GetCreationTimestamp().UTC().Format(time.DateTime),
-		})
+		}
+		setResourceSpecificFields(item, &res)
+		result = append(result, res)
 	}
 	return result
+}
+
+func setResourceSpecificFields(item unstructured.Unstructured, res *listResourcesOutput) {
+	switch item.GetKind() {
+	case "Secret":
+		if resourceType, ok, err := unstructured.NestedString(item.Object, "type"); ok && err == nil {
+			res.Type = resourceType
+		}
+	case "Service":
+		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
+			if itemType, ok := spec["type"]; ok {
+				res.Type = fmt.Sprintf("%s", itemType)
+			}
+			if clusterIp, ok := spec["clusterIP"]; ok {
+				res.ClusterIP = fmt.Sprintf("%s", clusterIp)
+			}
+		}
+		portsInfo := make([]string, 0)
+		if ports, ok, err := unstructured.NestedSlice(item.Object, "spec", "ports"); ok && err == nil {
+			for _, port := range ports {
+				portMap := port.(map[string]interface{})
+				portsInfo = append(portsInfo, fmt.Sprintf("%d/%s", portMap["port"], portMap["protocol"]))
+			}
+		}
+		res.Ports = strings.Join(portsInfo, ",")
+	case "Pod":
+		if nodeName, ok, err := unstructured.NestedString(item.Object, "spec", "nodeName"); ok && err == nil {
+			res.Node = nodeName
+		}
+		if podIP, ok, err := unstructured.NestedString(item.Object, "status", "podIP"); ok && err == nil {
+			res.PodIP = podIP
+		}
+		restarts := 0
+		waitingReasons := make([]string, 0)
+		lastTermReasons := make([]string, 0)
+		if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
+			for _, cStatus := range containerStatuses {
+				cStatusMap := cStatus.(map[string]interface{})
+				if rc, ok := cStatusMap["restartCount"].(int64); ok {
+					restarts += int(rc)
+				}
+				if stateMap, ok := cStatusMap["state"].(map[string]interface{}); ok {
+					if waiting, ok := stateMap["waiting"].(map[string]interface{}); ok {
+						if reason, ok := waiting["reason"].(string); ok && reason != "" {
+							waitingReasons = append(waitingReasons, reason)
+						}
+					}
+				}
+				if lastState, ok := cStatusMap["lastState"].(map[string]interface{}); ok {
+					if terminated, ok := lastState["terminated"].(map[string]interface{}); ok {
+						if reason, ok := terminated["reason"].(string); ok && reason != "" {
+							lastTermReasons = append(lastTermReasons, reason)
+						}
+					}
+				}
+			}
+		}
+		res.Restarts = restarts
+		if len(waitingReasons) > 0 {
+			res.StateReason = strings.Join(waitingReasons, ",")
+		}
+		if len(lastTermReasons) > 0 {
+			res.LastTerminationReason = strings.Join(lastTermReasons, ",")
+		}
+	case "Deployment", "StatefulSet", "DaemonSet":
+		desired, _, _ := unstructured.NestedInt64(item.Object, "spec", "replicas")
+		ready, _, _ := unstructured.NestedInt64(item.Object, "status", "readyReplicas")
+		res.Ready = fmt.Sprintf("%d/%d", ready, desired)
+	case "Node":
+		if addresses, ok, err := unstructured.NestedSlice(item.Object, "status", "addresses"); ok && err == nil {
+			for _, addr := range addresses {
+				addrMap := addr.(map[string]interface{})
+				switch addrMap["type"] {
+				case "InternalIP":
+					res.InternalIP = addrMap["address"].(string)
+				case "ExternalIP":
+					res.ExternalIP = addrMap["address"].(string)
+				}
+			}
+		}
+		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
+			ready := "NotReady"
+			problems := make([]string, 0)
+			for _, condition := range conditions {
+				conditionMap := condition.(map[string]interface{})
+				typ, _ := conditionMap["type"].(string)
+				status, _ := conditionMap["status"].(string)
+				if typ == "Ready" && status == "True" {
+					ready = "Ready"
+				} else if typ != "Ready" && status == "True" {
+					// pressure/unavailable conditions — True means problem
+					problems = append(problems, typ)
+				}
+			}
+			if len(problems) > 0 {
+				res.Status = strings.Join(problems, ",")
+			}
+			res.Ready = ready
+		}
+	}
 }
 
 func (c *Client) GetResource(ctx context.Context, name string, resource string, namespace string) (string, error) {
