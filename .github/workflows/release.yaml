@@ -93,49 +93,50 @@ jobs:
           sbom: true
           push: true
 
-  attest:
-    runs-on: ubuntu-24.04
-    needs: build
-    steps:
-      - name: Login to GHCR
-        uses: docker/login-action@v3.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Attest build provenance (GitHub)
-        uses: actions/attest-build-provenance@v3.2.0
-        with:
-          subject-name: ${{ env.DOCKER_IMAGE_NAME }}
-          subject-digest: ${{ needs.build.outputs.digest }}
-          push-to-registry: true
-          show-summary: 'true'
-
-      - name: Generate SBOM (SPDX)
-        uses: anchore/sbom-action@v0.23.1
-        with:
-          image: ${{ env.DOCKER_IMAGE_NAME }}@${{ needs.build.outputs.digest }}
-          format: spdx-json
-          output-file: sbom.spdx.json
-
-      - name: Attest SBOM (GitHub)
-        uses: actions/attest-sbom@v3.0.0
-        with:
-          subject-name: ${{ env.DOCKER_IMAGE_NAME }}
-          subject-digest: ${{ needs.build.outputs.digest }}
-          sbom-path: sbom.spdx.json
-          push-to-registry: true
-
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v6.0.0
-        with:
-          name: sbom
-          path: sbom.spdx.json
+#  attest:
+#    runs-on: ubuntu-24.04
+#    needs: build
+#    steps:
+#      - name: Login to GHCR
+#        uses: docker/login-action@v3.7.0
+#        with:
+#          registry: ghcr.io
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Attest build provenance (GitHub)
+#        uses: actions/attest-build-provenance@v3.2.0
+#        with:
+#          subject-name: ${{ env.DOCKER_IMAGE_NAME }}
+#          subject-digest: ${{ needs.build.outputs.digest }}
+#          push-to-registry: true
+#          show-summary: 'true'
+#
+#      - name: Generate SBOM (SPDX)
+#        uses: anchore/sbom-action@v0.23.1
+#        with:
+#          image: ${{ env.DOCKER_IMAGE_NAME }}@${{ needs.build.outputs.digest }}
+#          format: spdx-json
+#          output-file: sbom.spdx.json
+#
+#      - name: Attest SBOM (GitHub)
+#        uses: actions/attest-sbom@v3.0.0
+#        with:
+#          subject-name: ${{ env.DOCKER_IMAGE_NAME }}
+#          subject-digest: ${{ needs.build.outputs.digest }}
+#          sbom-path: sbom.spdx.json
+#          push-to-registry: true
+#
+#      - name: Upload SBOM artifact
+#        uses: actions/upload-artifact@v6.0.0
+#        with:
+#          name: sbom
+#          path: sbom.spdx.json
 
   prepare-attestations-for-release:
     runs-on: ubuntu-24.04
-    needs: [build, attest]
+#    needs: [build, attest]
+    needs: [build]
     steps:
       - name: Download provenance attestation with retry
         env:
