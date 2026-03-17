@@ -160,15 +160,37 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 			res.PodIP = podIP
 		}
 		restarts := 0
+		waitingReasons := make([]string, 0)
+		lastTermReasons := make([]string, 0)
 		if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
 			for _, cStatus := range containerStatuses {
 				cStatusMap := cStatus.(map[string]interface{})
 				if rc, ok := cStatusMap["restartCount"].(int64); ok {
 					restarts += int(rc)
 				}
+				if stateMap, ok := cStatusMap["state"].(map[string]interface{}); ok {
+					if waiting, ok := stateMap["waiting"].(map[string]interface{}); ok {
+						if reason, ok := waiting["reason"].(string); ok && reason != "" {
+							waitingReasons = append(waitingReasons, reason)
+						}
+					}
+				}
+				if lastState, ok := cStatusMap["lastState"].(map[string]interface{}); ok {
+					if terminated, ok := lastState["terminated"].(map[string]interface{}); ok {
+						if reason, ok := terminated["reason"].(string); ok && reason != "" {
+							lastTermReasons = append(lastTermReasons, reason)
+						}
+					}
+				}
 			}
 		}
 		res.Restarts = restarts
+		if len(waitingReasons) > 0 {
+			res.StateReason = strings.Join(waitingReasons, ",")
+		}
+		if len(lastTermReasons) > 0 {
+			res.LastTerminationReason = strings.Join(lastTermReasons, ",")
+		}
 	case "Deployment", "StatefulSet", "DaemonSet":
 		desired, _, _ := unstructured.NestedInt64(item.Object, "spec", "replicas")
 		ready, _, _ := unstructured.NestedInt64(item.Object, "status", "readyReplicas")
