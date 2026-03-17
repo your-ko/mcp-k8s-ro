@@ -1,3 +1,6 @@
+[![Main](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/main.yaml/badge.svg)](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/main.yaml)
+[![golangci-lint](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/golangci-lint.yaml/badge.svg)](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/golangci-lint.yaml)
+[![Link validation](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/link-validator.yaml/badge.svg)](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/link-validator.yaml)
 # mcp-k8s-ro
 
 A read-only MCP server that gives Claude access to Kubernetes clusters. Built in Go, communicates over stdio using the MCP protocol.
