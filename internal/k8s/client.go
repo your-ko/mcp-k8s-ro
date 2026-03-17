@@ -169,6 +169,10 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 			}
 		}
 		res.Restarts = restarts
+	case "Deployment", "StatefulSet", "DaemonSet":
+		desired, _, _ := unstructured.NestedInt64(item.Object, "spec", "replicas")
+		ready, _, _ := unstructured.NestedInt64(item.Object, "status", "readyReplicas")
+		res.Ready = fmt.Sprintf("%d/%d", ready, desired)
 	case "Node":
 		if addresses, ok, err := unstructured.NestedSlice(item.Object, "status", "addresses"); ok && err == nil {
 			for _, addr := range addresses {
@@ -196,10 +200,9 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 				}
 			}
 			if len(problems) > 0 {
-				res.Status = ready + "," + strings.Join(problems, ",")
-			} else {
-				res.Status = ready
+				res.Status = strings.Join(problems, ",")
 			}
+			res.Ready = ready
 		}
 	}
 }
