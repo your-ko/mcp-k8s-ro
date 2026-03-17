@@ -184,15 +184,13 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
 			conditionsStatus := make([]string, 0, len(conditions))
 			for _, condition := range conditions {
-				conditionMap := condition.(map[string]string)
-				if status, ok := conditionMap["status"]; ok && status == "True" {
-					if typ, ok := conditionMap["Type"]; ok {
+				conditionMap := condition.(map[string]interface{})
+				if status, ok := conditionMap["status"].(string); ok && status == "True" {
+					if typ, ok := conditionMap["type"].(string); ok {
+						conditionsStatus = append(conditionsStatus, typ)
 						if typ == "Ready" {
 							// between all node conditions we found Status:Ready, so there is no need to continue
-							res.Status = typ
 							break
-						} else {
-							conditionsStatus = append(conditionsStatus, typ)
 						}
 					}
 				}
