@@ -5,6 +5,14 @@
 
 A read-only MCP server that gives Claude access to Kubernetes clusters. Built in Go, communicates over stdio using the MCP protocol.
 
+## Why
+
+- **Safe by design** — read-only, so Claude can never accidentally mutate your cluster.
+- **Token-efficient** — responses include only relevant fields (name, status, restarts, etc.) rather than raw Kubernetes API objects, which saves significant context space.
+- **Cluster-aware** — every response includes the active context and cluster name, so Claude always knows which cluster it's looking at.
+- **Secret-safe** — secret values are masked before being sent to the model.
+- **No extra infra** — runs as a local binary or Docker container, connects to whatever kubeconfig context is active at startup.
+
 ## Constraints
 
 - **Context-pinned** — the server locks to the active kubeconfig context at startup. Switching contexts in another terminal has no effect on the running server.
