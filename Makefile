@@ -1,5 +1,7 @@
 BINARY := mcp-k8s-ro
 MODULE := github.com/your-ko/mcp-k8s-ro
+# renovate: datasource=github-releases depName=vektra/mockery versioning=semver
+MOCKERY_VERSION=v3.7.0
 
 .PHONY: build run test clean tidy
 
@@ -19,3 +21,9 @@ test:
 
 clean:
 	rm -f $(BINARY)
+
+docker-build:
+	docker build . -t mcp-k8s-ro
+
+generate-mocks:
+	docker run --rm -v "$$PWD:/src" -w /src/ vektra/mockery:${MOCKERY_VERSION}
