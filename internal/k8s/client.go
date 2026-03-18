@@ -247,6 +247,10 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	if err != nil {
 		return "", err
 	}
+
+	// this reduces context (hence used tokens) a lot
+	unstructured.RemoveNestedField(res.Object, "metadata", "managedFields")
+
 	if res.GetKind() == "Secret" {
 		if data, ok, err := unstructured.NestedMap(res.Object, "data"); ok && err == nil {
 			secrets := make(map[string]interface{})
