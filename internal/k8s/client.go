@@ -266,7 +266,7 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	return c.Header() + string(yamlBytes), nil
 }
 
-func (c *Client) GetLogs(podName string, namespace string, tailLines int64, previous bool, container string) (string, error) {
+func (c *Client) GetLogs(ctx context.Context, podName string, namespace string, tailLines int64, previous bool, container string) (string, error) {
 	opts := &v1.PodLogOptions{}
 	if tailLines > 0 {
 		opts.TailLines = &tailLines
@@ -276,7 +276,7 @@ func (c *Client) GetLogs(podName string, namespace string, tailLines int64, prev
 	}
 	opts.Previous = previous
 	request := c.clientSet.CoreV1().Pods(namespace).GetLogs(podName, opts)
-	podLogs, err := request.Stream(context.TODO())
+	podLogs, err := request.Stream(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -342,12 +342,12 @@ func (c *Client) ListApiResources(groupFilter string) (string, error) {
 	return serializeList(result, c.Header())
 }
 
-func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
+func (c *Client) GetEvents(ctx context.Context, namespace string, limit int64) (string, error) {
 	opts := metav1.ListOptions{}
 	if limit > 0 {
 		opts.Limit = limit
 	}
-	list, err := c.clientSet.EventsV1().Events(namespace).List(context.TODO(), opts)
+	list, err := c.clientSet.EventsV1().Events(namespace).List(ctx, opts)
 	if err != nil {
 		return "", err
 	}
@@ -390,8 +390,8 @@ func (c *Client) GetEvents(namespace string, limit int64) (string, error) {
 	return serializeList(result, c.Header())
 }
 
-func (c *Client) TopPods(namespace string) (string, error) {
-	podMetricsList, err := c.metricClient.MetricsV1beta1().PodMetricses(namespace).List(context.TODO(), metav1.ListOptions{})
+func (c *Client) TopPods(ctx context.Context, namespace string) (string, error) {
+	podMetricsList, err := c.metricClient.MetricsV1beta1().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -426,12 +426,12 @@ func (c *Client) TopPods(namespace string) (string, error) {
 	return c.Header() + string(yamlBytes), nil
 }
 
-func (c *Client) TopNodes() (string, error) {
-	nodeMetrics, err := c.metricClient.MetricsV1beta1().NodeMetricses().List(context.TODO(), metav1.ListOptions{})
+func (c *Client) TopNodes(ctx context.Context) (string, error) {
+	nodeMetrics, err := c.metricClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
-	nodes, err := c.clientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	nodes, err := c.clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}

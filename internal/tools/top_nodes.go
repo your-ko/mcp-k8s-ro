@@ -1,7 +1,9 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
@@ -34,5 +36,7 @@ func (tool NodeTopper) InputSchema() mcp.InputSchema {
 }
 
 func (tool NodeTopper) Execute(_ json.RawMessage) (string, error) {
-	return tool.client.TopNodes()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return tool.client.TopNodes(ctx)
 }
