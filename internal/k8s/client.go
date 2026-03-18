@@ -3,7 +3,6 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -204,9 +203,17 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 				addrMap := addr.(map[string]interface{})
 				switch addrMap["type"] {
 				case "InternalIP":
-					res.InternalIP = addrMap["address"].(string)
+					ip, ok := addrMap["address"].(string)
+					if ok {
+						res.InternalIP = ip
+						continue
+					}
 				case "ExternalIP":
-					res.ExternalIP = addrMap["address"].(string)
+					ip, ok := addrMap["address"].(string)
+					if ok {
+						res.ExternalIP = ip
+						continue
+					}
 				}
 			}
 		}
@@ -294,7 +301,7 @@ func (c *Client) GetLogs(ctx context.Context, podName string, namespace string, 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
-		return "", errors.New("error in copy from podLogs to buf")
+		return "", fmt.Errorf("error in copy from podLogs to buf: %w", err)
 	}
 	str := buf.String()
 
