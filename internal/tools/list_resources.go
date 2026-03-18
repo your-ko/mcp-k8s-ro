@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
@@ -59,6 +60,7 @@ func (tool ListResources) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// TODO: improve context
-	return tool.client.ListResources(context.TODO(), p.Resource, p.Namespace)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return tool.client.ListResources(ctx, p.Resource, p.Namespace)
 }
