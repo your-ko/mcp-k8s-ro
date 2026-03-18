@@ -13,9 +13,10 @@ import (
 )
 
 // fakeResourceClient is a minimal dynamic.NamespaceableResourceInterface that
-// returns a fixed list and supports Namespace() chaining.
+// returns a fixed list/item and supports Namespace() chaining.
 type fakeResourceClient struct {
 	list *unstructured.UnstructuredList
+	item *unstructured.Unstructured
 	err  error
 }
 
@@ -41,7 +42,7 @@ func (f *fakeResourceClient) DeleteCollection(_ context.Context, _ metav1.Delete
 	return nil
 }
 func (f *fakeResourceClient) Get(_ context.Context, _ string, _ metav1.GetOptions, _ ...string) (*unstructured.Unstructured, error) {
-	return nil, nil
+	return f.item, f.err
 }
 func (f *fakeResourceClient) Watch(_ context.Context, _ metav1.ListOptions) (watch.Interface, error) {
 	return nil, nil
