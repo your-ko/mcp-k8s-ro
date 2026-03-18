@@ -45,15 +45,16 @@ make build
 {
   "mcpServers": {
     "k8s": {
+      "type" : "stdio",
       "command": "/path/to/bin/mcp-k8s-ro",
       "env": {
-        "KUBECONFIG": "/Users/you/.kube/config"
+        "KUBECONFIG": "/path/to/.kube/config"
       }
     }
   }
 }
 ```
-
+or execute `claude mcp add --transport stdio --scope user mcp-k8s-ro [path to binary]`
 ### Docker
 
 Pull the image from GitHub Container Registry:
