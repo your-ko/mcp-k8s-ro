@@ -3,7 +3,6 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -136,7 +135,9 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 	case "Service":
 		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
 			if itemType, ok := spec["type"]; ok {
-				res.Type = fmt.Sprintf("%s", itemType)
+				if _, ok := itemType.(string); ok {
+					res.Type = itemType.(string)
+				}
 			}
 			if clusterIp, ok := spec["clusterIP"]; ok {
 				res.ClusterIP = fmt.Sprintf("%s", clusterIp)
@@ -145,8 +146,9 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 		portsInfo := make([]string, 0)
 		if ports, ok, err := unstructured.NestedSlice(item.Object, "spec", "ports"); ok && err == nil {
 			for _, port := range ports {
-				portMap := port.(map[string]interface{})
-				portsInfo = append(portsInfo, fmt.Sprintf("%d/%s", portMap["port"], portMap["protocol"]))
+				if portMap, ok := port.(map[string]interface{}); ok {
+					portsInfo = append(portsInfo, fmt.Sprintf("%d/%s", portMap["port"], portMap["protocol"]))
+				}
 			}
 		}
 		res.Ports = strings.Join(portsInfo, ",")
@@ -204,9 +206,17 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 				addrMap := addr.(map[string]interface{})
 				switch addrMap["type"] {
 				case "InternalIP":
-					res.InternalIP = addrMap["address"].(string)
+					ip, ok := addrMap["address"].(string)
+					if ok {
+						res.InternalIP = ip
+						continue
+					}
 				case "ExternalIP":
-					res.ExternalIP = addrMap["address"].(string)
+					ip, ok := addrMap["address"].(string)
+					if ok {
+						res.ExternalIP = ip
+						continue
+					}
 				}
 			}
 		}
@@ -214,7 +224,11 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 			ready := "NotReady"
 			problems := make([]string, 0)
 			for _, condition := range conditions {
-				conditionMap := condition.(map[string]interface{})
+				conditionMap, ok := condition.(map[string]interface{})
+				if !ok {
+					// in case if condition is not a map
+					continue
+				}
 				typ, _ := conditionMap["type"].(string)
 				status, _ := conditionMap["status"].(string)
 				if typ == "Ready" && status == "True" {
@@ -294,7 +308,7 @@ func (c *Client) GetLogs(ctx context.Context, podName string, namespace string, 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
-		return "", errors.New("error in copy from podLogs to buf")
+		return "", fmt.Errorf("error in copy from podLogs to buf: %w", err)
 	}
 	str := buf.String()
 
@@ -423,11 +437,7 @@ func (c *Client) TopPods(ctx context.Context, namespace string) (string, error) 
 			Containers: containers,
 		})
 	}
-	yamlBytes, err := yaml.Marshal(result)
-	if err != nil {
-		return "", err
-	}
-	return c.Header() + string(yamlBytes), nil
+	return serializeList(result, c.Header())
 }
 
 func (c *Client) TopNodes(ctx context.Context) (string, error) {
@@ -468,11 +478,7 @@ func (c *Client) TopNodes(ctx context.Context) (string, error) {
 			MemoryPct: memPct,
 		})
 	}
-	yamlBytes, err := yaml.Marshal(result)
-	if err != nil {
-		return "", err
-	}
-	return c.Header() + string(yamlBytes), nil
+	return serializeList(result, c.Header())
 }
 
 func serializeList[T any](list []T, header string) (string, error) {
