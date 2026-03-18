@@ -81,7 +81,7 @@ Add it to your Claude Desktop or `claude` CLI configuration. The kubeconfig dire
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
-        "-v", "/Users/you/.kube:/home/nonroot/.kube:ro",
+        "-v", "/path/to/.kube:/home/nonroot/.kube:ro",
         "ghcr.io/your-ko/mcp-k8s-ro:latest"
       ]
     }
