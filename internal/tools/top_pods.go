@@ -1,7 +1,9 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
@@ -43,5 +45,8 @@ func (tool PodTopper) Execute(params json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tool.client.TopPods(p.Namespace)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return tool.client.TopPods(ctx, p.Namespace)
 }

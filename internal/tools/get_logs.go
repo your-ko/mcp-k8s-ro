@@ -1,7 +1,9 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/your-ko/mcp-k8s-ro/internal/k8s"
 	"github.com/your-ko/mcp-k8s-ro/internal/mcp"
@@ -52,5 +54,7 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	return tool.client.GetLogs(p.Name, p.Namespace, p.TailLines, p.Previous, p.Container)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return tool.client.GetLogs(ctx, p.Name, p.Namespace, p.TailLines, p.Previous, p.Container)
 }
