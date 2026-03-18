@@ -142,3 +142,52 @@ func TestClient_ListResources(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_GetResource(t *testing.T) {
+	type args struct {
+		name      string
+		resource  string
+		namespace string
+	}
+	tests := []struct {
+		name        string
+		args        args
+		setupMapper func(*mockrestMapper)
+		setupDyn    func(*mockdynamicClient)
+		wantErr     error
+	}{
+		{},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mapper := newMockrestMapper(t)
+			dyn := newMockdynamicClient(t)
+			tt.setupMapper(mapper)
+			tt.setupDyn(dyn)
+
+			c := &Client{
+				mapper:      mapper,
+				dynamic:     dyn,
+				contextName: "test-context",
+				clusterName: "test-cluster",
+			}
+
+			_, err := c.GetResource(context.Background(), tt.args.name, tt.args.resource, tt.args.namespace)
+
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Fatalf("expected no error, got %s", err)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("expected error %v, got nil", tt.wantErr)
+			}
+
+			if tt.wantErr.Error() != err.Error() {
+				t.Fatalf("expected error message:\n%q\ngot:\n%q", tt.wantErr.Error(), err.Error())
+			}
+		})
+	}
+}
