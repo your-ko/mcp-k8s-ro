@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -30,11 +31,12 @@ func TestClient_ListResources(t *testing.T) {
 		namespace string
 	}
 	tests := []struct {
-		name        string
-		args        args
-		setupMapper func(*mockrestMapper)
-		setupDyn    func(*mockdynamicClient)
-		wantErr     error
+		name         string
+		args         args
+		setupMapper  func(*mockrestMapper)
+		setupDyn     func(*mockdynamicClient)
+		wantContains []string
+		wantErr      error
 	}{
 		{
 			name: "list pods in namespace",
@@ -50,6 +52,7 @@ func TestClient_ListResources(t *testing.T) {
 					list: &unstructured.UnstructuredList{Items: []unstructured.Unstructured{podItem}},
 				})
 			},
+			wantContains: []string{"my-pod", "test-context", "test-cluster"},
 		},
 		{
 			name: "list nodes (cluster-scoped)",
@@ -65,6 +68,7 @@ func TestClient_ListResources(t *testing.T) {
 					list: &unstructured.UnstructuredList{Items: []unstructured.Unstructured{nodeItem}},
 				})
 			},
+			wantContains: []string{"my-node", "test-context", "test-cluster"},
 		},
 		{
 			name: "namespaced resource with no namespace falls back to cluster-wide list",
@@ -80,6 +84,7 @@ func TestClient_ListResources(t *testing.T) {
 					list: &unstructured.UnstructuredList{},
 				})
 			},
+			wantContains: []string{"test-context", "test-cluster"},
 		},
 		{
 			name: "resolveGVR returns error",
@@ -123,11 +128,16 @@ func TestClient_ListResources(t *testing.T) {
 				clusterName: "test-cluster",
 			}
 
-			_, err := c.ListResources(context.Background(), tt.args.resource, tt.args.namespace)
+			result, err := c.ListResources(context.Background(), tt.args.resource, tt.args.namespace)
 
 			if tt.wantErr == nil {
 				if err != nil {
 					t.Fatalf("expected no error, got %s", err)
+				}
+				for _, s := range tt.wantContains {
+					if !strings.Contains(result, s) {
+						t.Errorf("expected result to contain %q, got:\n%s", s, result)
+					}
 				}
 				return
 			}
@@ -150,14 +160,69 @@ func TestClient_GetResource(t *testing.T) {
 		namespace string
 	}
 	tests := []struct {
-		name        string
-		args        args
-		setupMapper func(*mockrestMapper)
-		setupDyn    func(*mockdynamicClient)
-		wantErr     error
+		name         string
+		args         args
+		setupMapper  func(*mockrestMapper)
+		setupDyn     func(*mockdynamicClient)
+		wantContains []string
+		wantErr      error
 	}{
-		{},
+		{
+			name: "get pod returns yaml with name and header",
+			args: args{name: "my-pod", resource: "pods", namespace: "default"},
+			setupMapper: func(m *mockrestMapper) {
+				gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
+				gvk := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"}
+				m.EXPECT().ResourceFor(schema.GroupVersionResource{Resource: "pods"}).Return(gvr, nil)
+				m.EXPECT().KindsFor(gvr).Return([]schema.GroupVersionKind{gvk}, nil)
+				m.EXPECT().RESTMapping(gvk.GroupKind(), mock.Anything).
+					Return(restMappingFor(gvk, namespacedScope{}), nil)
+			},
+			setupDyn: func(m *mockdynamicClient) {
+				item := unstructured.Unstructured{}
+				item.SetName("my-pod")
+				item.SetNamespace("default")
+				item.SetKind("Pod")
+				gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
+				m.EXPECT().Resource(gvr).Return(&fakeResourceClient{item: &item})
+			},
+			wantContains: []string{"my-pod", "test-context", "test-cluster"},
+		},
+		{
+			name: "get secret masks data values",
+			args: args{name: "my-secret", resource: "secrets", namespace: "default"},
+			setupMapper: func(m *mockrestMapper) {
+				gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
+				gvk := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secret"}
+				m.EXPECT().ResourceFor(schema.GroupVersionResource{Resource: "secrets"}).Return(gvr, nil)
+				m.EXPECT().KindsFor(gvr).Return([]schema.GroupVersionKind{gvk}, nil)
+				m.EXPECT().RESTMapping(gvk.GroupKind(), mock.Anything).
+					Return(restMappingFor(gvk, namespacedScope{}), nil)
+			},
+			setupDyn: func(m *mockdynamicClient) {
+				item := unstructured.Unstructured{}
+				item.SetName("my-secret")
+				item.SetKind("Secret")
+				_ = unstructured.SetNestedField(item.Object, map[string]interface{}{
+					"password": "super-secret",
+				}, "data")
+				gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
+				m.EXPECT().Resource(gvr).Return(&fakeResourceClient{item: &item})
+			},
+			wantContains: []string{"my-secret", "*****"},
+		},
+		{
+			name: "resolveGVR returns error",
+			args: args{name: "my-pod", resource: "unknown", namespace: "default"},
+			setupMapper: func(m *mockrestMapper) {
+				m.EXPECT().ResourceFor(mock.Anything).
+					Return(schema.GroupVersionResource{}, errors.New("no matches for kind"))
+			},
+			setupDyn: func(m *mockdynamicClient) {},
+			wantErr:  errors.New("no matches for kind"),
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mapper := newMockrestMapper(t)
@@ -172,11 +237,16 @@ func TestClient_GetResource(t *testing.T) {
 				clusterName: "test-cluster",
 			}
 
-			_, err := c.GetResource(context.Background(), tt.args.name, tt.args.resource, tt.args.namespace)
+			result, err := c.GetResource(context.Background(), tt.args.name, tt.args.resource, tt.args.namespace)
 
 			if tt.wantErr == nil {
 				if err != nil {
 					t.Fatalf("expected no error, got %s", err)
+				}
+				for _, s := range tt.wantContains {
+					if !strings.Contains(result, s) {
+						t.Errorf("expected result to contain %q, got:\n%s", s, result)
+					}
 				}
 				return
 			}
