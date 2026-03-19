@@ -208,7 +208,10 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 	case "Node":
 		if addresses, ok, err := unstructured.NestedSlice(item.Object, "status", "addresses"); ok && err == nil {
 			for _, addr := range addresses {
-				addrMap := addr.(map[string]interface{})
+				addrMap, ok := addr.(map[string]interface{})
+				if !ok {
+					continue
+				}
 				switch addrMap["type"] {
 				case "InternalIP":
 					ip, ok := addrMap["address"].(string)
