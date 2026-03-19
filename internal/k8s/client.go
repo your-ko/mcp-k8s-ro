@@ -76,10 +76,12 @@ func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool,
 	}
 	gvks, err := c.mapper.KindsFor(gvr)
 	if err != nil || len(gvks) == 0 {
+		// can't determine scope — assume namespaced so namespace filter still applies if provided
 		return gvr, true, nil
 	}
 	mapping, err := c.mapper.RESTMapping(gvks[0].GroupKind(), gvks[0].Version)
 	if err != nil {
+		// can't determine scope — assume namespaced so namespace filter still applies if provided
 		return gvr, true, nil
 	}
 	return gvr, mapping.Scope.Name() == meta.RESTScopeNameNamespace, nil
