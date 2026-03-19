@@ -76,7 +76,7 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 				}, nil
 			}
 		}
-		return nil, &rpcError{-32601, fmt.Errorf("unknown tool: %s", p.Name)}
+		return nil, &rpcError{-32603, fmt.Errorf("unknown tool: %s", p.Name)}
 	}
 	return nil, &rpcError{-32601, fmt.Errorf("unknown method: %s", request.Method)}
 }

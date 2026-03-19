@@ -142,7 +142,9 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 				}
 			}
 			if clusterIp, ok := spec["clusterIP"]; ok {
-				res.ClusterIP = fmt.Sprintf("%s", clusterIp)
+				if ip, ok := clusterIp.(string); ok {
+					res.ClusterIP = ip
+				}
 			}
 		}
 		portsInfo := make([]string, 0)
@@ -167,24 +169,25 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 		lastTermReasons := make([]string, 0)
 		if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
 			for _, cStatus := range containerStatuses {
-				cStatusMap := cStatus.(map[string]interface{})
-				if rc, ok := cStatusMap["restartCount"].(int64); ok {
-					restarts += int(rc)
-				}
-				if isReady, ok := cStatusMap["ready"].(bool); ok && isReady {
-					readyCount++
-				}
-				if stateMap, ok := cStatusMap["state"].(map[string]interface{}); ok {
-					if waiting, ok := stateMap["waiting"].(map[string]interface{}); ok {
-						if reason, ok := waiting["reason"].(string); ok && reason != "" {
-							waitingReasons = append(waitingReasons, reason)
+				if cStatusMap, ok := cStatus.(map[string]interface{}); ok {
+					if rc, ok := cStatusMap["restartCount"].(int64); ok {
+						restarts += int(rc)
+					}
+					if isReady, ok := cStatusMap["ready"].(bool); ok && isReady {
+						readyCount++
+					}
+					if stateMap, ok := cStatusMap["state"].(map[string]interface{}); ok {
+						if waiting, ok := stateMap["waiting"].(map[string]interface{}); ok {
+							if reason, ok := waiting["reason"].(string); ok && reason != "" {
+								waitingReasons = append(waitingReasons, reason)
+							}
 						}
 					}
-				}
-				if lastState, ok := cStatusMap["lastState"].(map[string]interface{}); ok {
-					if terminated, ok := lastState["terminated"].(map[string]interface{}); ok {
-						if reason, ok := terminated["reason"].(string); ok && reason != "" {
-							lastTermReasons = append(lastTermReasons, reason)
+					if lastState, ok := cStatusMap["lastState"].(map[string]interface{}); ok {
+						if terminated, ok := lastState["terminated"].(map[string]interface{}); ok {
+							if reason, ok := terminated["reason"].(string); ok && reason != "" {
+								lastTermReasons = append(lastTermReasons, reason)
+							}
 						}
 					}
 				}
