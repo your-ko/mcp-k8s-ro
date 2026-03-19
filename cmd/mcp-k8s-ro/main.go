@@ -45,7 +45,7 @@ func main() {
 
 	k8sClient, err := k8s.NewClient(config, contextName, clusterName)
 	if err != nil {
-		slog.With("error", err).Error("failed to create k8s client")
+		slog.Error("failed to create k8s client", "error", err)
 		os.Exit(1)
 	}
 
