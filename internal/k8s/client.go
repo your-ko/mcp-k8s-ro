@@ -327,7 +327,11 @@ var skipGroups = map[string]bool{
 func (c *Client) ListApiResources(groupFilter string) (string, error) {
 	resources, err := c.discovery.ServerPreferredResources()
 	if err != nil {
-		return "", err
+		if resources == nil {
+			return "", err
+		}
+		// partial result — some API groups unreachable (e.g. broken CRDs), log and continue with what we have
+		slog.Warn("ServerPreferredResources returned partial results", "error", err)
 	}
 	result := make([]apiResourcesOutput, 0)
 	for _, apiGroup := range resources {
