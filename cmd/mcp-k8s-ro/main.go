@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -22,7 +21,7 @@ func main() {
 	slog.SetDefault(logger)
 	slog.Info("MCP K8S RO starting...")
 	updateMetadata()
-	slog.Info(fmt.Sprintf("Version: %s, BuildDate: %s, GitCommit: %s", Version, BuildDate, GitCommit))
+	slog.Info("Starting", "Version", Version, "BuildDate", BuildDate, "GitCommit", GitCommit)
 
 	config, err := getConfig()
 	if err != nil {
