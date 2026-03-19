@@ -76,13 +76,14 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 				}, nil
 			}
 		}
-		return nil, &rpcError{-32601, fmt.Errorf("unknown tool: %s", p.Name)}
+		return nil, &rpcError{-32603, fmt.Errorf("unknown tool: %s", p.Name)}
 	}
 	return nil, &rpcError{-32601, fmt.Errorf("unknown method: %s", request.Method)}
 }
 
 func (s *Server) Start() {
 	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // A large tools/call payload will silently fail with token too long.
 	for scanner.Scan() {
 		line := scanner.Bytes()
 

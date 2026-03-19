@@ -76,10 +76,12 @@ func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool,
 	}
 	gvks, err := c.mapper.KindsFor(gvr)
 	if err != nil || len(gvks) == 0 {
+		// can't determine scope — assume namespaced so namespace filter still applies if provided
 		return gvr, true, nil
 	}
 	mapping, err := c.mapper.RESTMapping(gvks[0].GroupKind(), gvks[0].Version)
 	if err != nil {
+		// can't determine scope — assume namespaced so namespace filter still applies if provided
 		return gvr, true, nil
 	}
 	return gvr, mapping.Scope.Name() == meta.RESTScopeNameNamespace, nil
@@ -140,7 +142,9 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 				}
 			}
 			if clusterIp, ok := spec["clusterIP"]; ok {
-				res.ClusterIP = fmt.Sprintf("%s", clusterIp)
+				if ip, ok := clusterIp.(string); ok {
+					res.ClusterIP = ip
+				}
 			}
 		}
 		portsInfo := make([]string, 0)
@@ -165,24 +169,25 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 		lastTermReasons := make([]string, 0)
 		if containerStatuses, ok, err := unstructured.NestedSlice(item.Object, "status", "containerStatuses"); ok && err == nil {
 			for _, cStatus := range containerStatuses {
-				cStatusMap := cStatus.(map[string]interface{})
-				if rc, ok := cStatusMap["restartCount"].(int64); ok {
-					restarts += int(rc)
-				}
-				if isReady, ok := cStatusMap["ready"].(bool); ok && isReady {
-					readyCount++
-				}
-				if stateMap, ok := cStatusMap["state"].(map[string]interface{}); ok {
-					if waiting, ok := stateMap["waiting"].(map[string]interface{}); ok {
-						if reason, ok := waiting["reason"].(string); ok && reason != "" {
-							waitingReasons = append(waitingReasons, reason)
+				if cStatusMap, ok := cStatus.(map[string]interface{}); ok {
+					if rc, ok := cStatusMap["restartCount"].(int64); ok {
+						restarts += int(rc)
+					}
+					if isReady, ok := cStatusMap["ready"].(bool); ok && isReady {
+						readyCount++
+					}
+					if stateMap, ok := cStatusMap["state"].(map[string]interface{}); ok {
+						if waiting, ok := stateMap["waiting"].(map[string]interface{}); ok {
+							if reason, ok := waiting["reason"].(string); ok && reason != "" {
+								waitingReasons = append(waitingReasons, reason)
+							}
 						}
 					}
-				}
-				if lastState, ok := cStatusMap["lastState"].(map[string]interface{}); ok {
-					if terminated, ok := lastState["terminated"].(map[string]interface{}); ok {
-						if reason, ok := terminated["reason"].(string); ok && reason != "" {
-							lastTermReasons = append(lastTermReasons, reason)
+					if lastState, ok := cStatusMap["lastState"].(map[string]interface{}); ok {
+						if terminated, ok := lastState["terminated"].(map[string]interface{}); ok {
+							if reason, ok := terminated["reason"].(string); ok && reason != "" {
+								lastTermReasons = append(lastTermReasons, reason)
+							}
 						}
 					}
 				}
@@ -203,7 +208,10 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 	case "Node":
 		if addresses, ok, err := unstructured.NestedSlice(item.Object, "status", "addresses"); ok && err == nil {
 			for _, addr := range addresses {
-				addrMap := addr.(map[string]interface{})
+				addrMap, ok := addr.(map[string]interface{})
+				if !ok {
+					continue
+				}
 				switch addrMap["type"] {
 				case "InternalIP":
 					ip, ok := addrMap["address"].(string)
@@ -325,7 +333,11 @@ var skipGroups = map[string]bool{
 func (c *Client) ListApiResources(groupFilter string) (string, error) {
 	resources, err := c.discovery.ServerPreferredResources()
 	if err != nil {
-		return "", err
+		if resources == nil {
+			return "", err
+		}
+		// partial result — some API groups unreachable (e.g. broken CRDs), log and continue with what we have
+		slog.Warn("ServerPreferredResources returned partial results", "error", err)
 	}
 	result := make([]apiResourcesOutput, 0)
 	for _, apiGroup := range resources {
