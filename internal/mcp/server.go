@@ -83,6 +83,7 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 
 func (s *Server) Start() {
 	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // A large tools/call payload will silently fail with token too long.
 	for scanner.Scan() {
 		line := scanner.Bytes()
 
