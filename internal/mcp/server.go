@@ -3,7 +3,7 @@ package mcp
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"os"
 )
 
@@ -24,7 +24,7 @@ func New(name string, version string, contextName string, clusterName string) *S
 	}
 }
 
-func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
+func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 	if request.ID == nil {
 		return nil, nil
 	}
@@ -61,13 +61,13 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 		}
 		err := json.Unmarshal(request.Params, &p)
 		if err != nil {
-			return nil, err
+			return nil, &rpcError{-32602, err} // invalid params
 		}
 		for _, tool := range s.tools {
 			if tool.Name() == p.Name {
 				result, err := tool.Execute(p.Arguments)
 				if err != nil {
-					return nil, err
+					return nil, &rpcError{-32603, err}
 				}
 				return &JSONRPCResponse{
 					JSONRPC: "2.0",
@@ -76,8 +76,9 @@ func (s *Server) Process(request JSONRPCRequest) (*JSONRPCResponse, error) {
 				}, nil
 			}
 		}
+		return nil, &rpcError{-32601, fmt.Errorf("unknown tool: %s", p.Name)}
 	}
-	return nil, errors.New("not implemented yet")
+	return nil, &rpcError{-32601, fmt.Errorf("unknown method: %s", request.Method)}
 }
 
 func (s *Server) Start() {
@@ -88,12 +89,12 @@ func (s *Server) Start() {
 		request := JSONRPCRequest{}
 		err := json.Unmarshal(line, &request)
 		if err != nil {
-			handleError(request, err)
+			handleError(request.ID, -32700, err)
 			continue
 		}
-		response, err := s.Process(request)
-		if err != nil {
-			handleError(request, err)
+		response, rpcErr := s.process(request)
+		if rpcErr != nil {
+			handleError(request.ID, rpcErr.code, rpcErr.err)
 			continue
 		}
 		if response == nil {
@@ -101,17 +102,17 @@ func (s *Server) Start() {
 		}
 		err = json.NewEncoder(os.Stdout).Encode(response)
 		if err != nil {
-			handleError(request, err)
+			handleError(request.ID, -32603, err)
 		}
 	}
 }
 
-func handleError(request JSONRPCRequest, err error) {
+func handleError(requestId any, errorCode int, err error) {
 	response := JSONRPCResponse{
 		JSONRPC: "2.0",
-		ID:      request.ID,
+		ID:      requestId,
 		Error: &JSONRPCError{
-			Code:    -32603, // TODO: improve in the future, check JSON-RPC 2.0 standard error codes
+			Code:    errorCode,
 			Message: err.Error(),
 		}}
 	_ = json.NewEncoder(os.Stdout).Encode(response)

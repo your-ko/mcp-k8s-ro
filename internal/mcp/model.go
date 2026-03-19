@@ -64,3 +64,10 @@ type ToolDefinition struct {
 	Description string      `json:"description"`
 	InputSchema InputSchema `json:"inputSchema"`
 }
+
+type rpcError struct {
+	code int
+	err  error
+}
+
+func (e *rpcError) Error() string { return e.err.Error() }
