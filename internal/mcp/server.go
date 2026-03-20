@@ -45,7 +45,7 @@ func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 				InputSchema: tool.InputSchema(),
 			})
 		}
-		return map[string]any{"tools": toolDefs}, nil
+		return ListResult{toolDefs}, nil
 	case "tools/call":
 		var p struct {
 			Name      string          `json:"name"`

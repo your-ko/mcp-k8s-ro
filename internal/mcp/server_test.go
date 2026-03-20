@@ -68,10 +68,32 @@ func TestServer_process(t *testing.T) {
 		wantErr      *rpcError
 	}{
 		{
-			name:         "initialise",
-			args:         args{},
-			wantResponse: nil,
-			wantErr:      nil,
+			name: "notification_no_id",
+			args: args{request: JSONRPCRequest{
+				ID:     nil,
+				Method: "initialize",
+			}},
+		},
+		{
+			name: "initialize",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "initialize",
+			}},
+			wantResponse: InitialisationResult{
+				ProtocolVersion: "2024-11-05",
+				ServerInfo:      ServerInfo{serverData.name, serverData.version, serverData.clusterName, serverData.contextName},
+				Capabilities:    Capabilities{},
+				Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
+			},
+		},
+		{
+			name: "tools_list_empty",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "tools/list",
+			}},
+			wantResponse: ListResult{Tools: make([]ToolDefinition, 0)},
 		},
 	}
 	for _, tt := range tests {
@@ -98,9 +120,6 @@ func TestServer_process(t *testing.T) {
 
 			if !reflect.DeepEqual(response, tt.wantResponse) {
 				t.Errorf("process() got = %v, want %v", response, tt.wantResponse)
-			}
-			if !reflect.DeepEqual(err, tt.wantResponse) {
-				t.Errorf("process() got1 = %v, want %v", err, tt.wantResponse)
 			}
 		})
 	}

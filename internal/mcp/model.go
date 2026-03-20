@@ -41,6 +41,10 @@ type ExecutionResult struct {
 	Content []ContentItem `json:"content"`
 }
 
+type ListResult struct {
+	Tools []ToolDefinition `json:"tools"`
+}
+
 type ContentItem struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
