@@ -3,6 +3,10 @@ MODULE := github.com/your-ko/mcp-k8s-ro
 # renovate: datasource=github-releases depName=vektra/mockery versioning=semver
 MOCKERY_VERSION=v3.7.0
 
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
 .PHONY: build run test clean tidy
 
 tidy:
@@ -10,7 +14,7 @@ tidy:
 
 build:
 	go build -ldflags \
-    "-X main.GitCommit=test -X main.BuildDate=test -X main.Version=POC" \
+    "-X main.GitCommit=$(GIT_COMMIT) -X main.BuildDate=$(BUILD_DATE) -X main.Version=$(VERSION)" \
     -o bin/mcp-k8s-ro ./cmd/mcp-k8s-ro/
 
 run: build
