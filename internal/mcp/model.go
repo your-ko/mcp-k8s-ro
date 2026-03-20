@@ -37,6 +37,15 @@ type InitialisationResult struct {
 	Instructions    string       `json:"instructions"`
 }
 
+type ExecutionResult struct {
+	Content []ContentItem `json:"content"`
+}
+
+type ContentItem struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
 type ServerInfo struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`

@@ -61,7 +61,7 @@ func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 				if err != nil {
 					return nil, &rpcError{-32603, err}
 				}
-				return map[string]any{"content": []map[string]string{{"type": "text", "text": result}}}, nil
+				return ExecutionResult{Content: []ContentItem{{Type: "text", Text: result}}}, nil
 			}
 		}
 		return nil, &rpcError{-32603, fmt.Errorf("unknown tool: %s", p.Name)}
