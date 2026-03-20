@@ -1,6 +1,8 @@
 package mcp
 
 import (
+	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -101,7 +103,6 @@ func TestServer_process(t *testing.T) {
 				ID:     1,
 				Method: "tools/list",
 			}},
-
 			tools: func() []Tool {
 				m := NewMockTool(t)
 				m.EXPECT().Name().Return("my_tool")
@@ -110,6 +111,33 @@ func TestServer_process(t *testing.T) {
 				return []Tool{m}
 			},
 			wantResponse: ListResult{Tools: []ToolDefinition{{"my_tool", "tooling", InputSchema{Type: "object"}}}},
+		},
+		{
+			name: "tools_call_valid",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "tools/call",
+				Params: json.RawMessage(`{"name":"test","arguments":{}}`),
+			}},
+			tools: func() []Tool {
+				m := NewMockTool(t)
+				m.EXPECT().Execute(json.RawMessage(`{}`)).Return("result", nil)
+				m.EXPECT().Name().Return("test")
+				return []Tool{m}
+			},
+			wantResponse: ExecutionResult{[]ContentItem{{Type: "text", Text: "result"}}},
+		},
+		{
+			name: "tools_call_invalid_json_params",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "tools/call",
+				Params: json.RawMessage(`{"invalid_json`),
+			}},
+			tools: func() []Tool {
+				return make([]Tool, 0)
+			},
+			wantErr: &rpcError{code: -32602, err: errors.New("unexpected end of JSON input")},
 		},
 	}
 	for _, tt := range tests {
@@ -133,8 +161,11 @@ func TestServer_process(t *testing.T) {
 				t.Errorf("expected error %s, got nil", tt.wantErr.err)
 			}
 			if err != nil && tt.wantErr != nil {
-				if !reflect.DeepEqual(err, tt.wantErr) {
-					t.Errorf("process() got error = %v, want %v", err, tt.wantErr)
+				if err.code != tt.wantErr.code {
+					t.Errorf("process() got error code = %d, want %d", err.code, tt.wantErr.code)
+				}
+				if err.Error() != tt.wantErr.Error() {
+					t.Errorf("process() got error = %q, want %q", err.Error(), tt.wantErr.Error())
 				}
 			}
 
