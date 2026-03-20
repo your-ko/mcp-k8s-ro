@@ -134,10 +134,44 @@ func TestServer_process(t *testing.T) {
 				Method: "tools/call",
 				Params: json.RawMessage(`{"invalid_json`),
 			}},
-			tools: func() []Tool {
-				return make([]Tool, 0)
-			},
 			wantErr: &rpcError{code: -32602, err: errors.New("unexpected end of JSON input")},
+		},
+		{
+			name: "tools_call_unknown_tool",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "tools/call",
+				Params: json.RawMessage(`{"name":"unknown","arguments":{}}`),
+			}},
+			tools: func() []Tool {
+				m := NewMockTool(t)
+				m.EXPECT().Name().Return("test")
+				return []Tool{m}
+			},
+			wantErr: &rpcError{code: -32603, err: errors.New("unknown tool: unknown")},
+		},
+		{
+			name: "tools_call_tool_execute_error",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "tools/call",
+				Params: json.RawMessage(`{"name":"test","arguments":{}}`),
+			}},
+			tools: func() []Tool {
+				m := NewMockTool(t)
+				m.EXPECT().Name().Return("test")
+				m.EXPECT().Execute(json.RawMessage(`{}`)).Return("result", errors.New("expected error"))
+				return []Tool{m}
+			},
+			wantErr: &rpcError{code: -32603, err: errors.New("expected error")},
+		},
+		{
+			name: "unknown_method",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "foo/bar",
+			}},
+			wantErr: &rpcError{code: -32601, err: errors.New("unknown method: foo/bar")},
 		},
 	}
 	for _, tt := range tests {
@@ -148,8 +182,10 @@ func TestServer_process(t *testing.T) {
 				contextName: serverData.contextName,
 				clusterName: serverData.clusterName,
 			}
-			for _, tool := range tt.tools() {
-				s.Register(tool)
+			if tt.tools != nil {
+				for _, tool := range tt.tools() {
+					s.Register(tool)
+				}
 			}
 
 			response, err := s.process(tt.args.request)
