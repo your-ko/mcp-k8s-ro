@@ -104,9 +104,9 @@ func TestServer_process(t *testing.T) {
 
 			tools: func() []Tool {
 				m := NewMockTool(t)
-				m.On("Name").Return("my_tool")
-				m.On("Description").Return("tooling")
-				m.On("InputSchema").Return(InputSchema{Type: "object"})
+				m.EXPECT().Name().Return("my_tool")
+				m.EXPECT().Description().Return("tooling")
+				m.EXPECT().InputSchema().Return(InputSchema{Type: "object"})
 				return []Tool{m}
 			},
 			wantResponse: ListResult{Tools: []ToolDefinition{{"my_tool", "tooling", InputSchema{Type: "object"}}}},
