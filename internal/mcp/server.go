@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 )
 
 type Server struct {
@@ -24,21 +24,17 @@ func New(name string, version string, contextName string, clusterName string) *S
 	}
 }
 
-func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
+func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 	if request.ID == nil {
 		return nil, nil
 	}
 	switch request.Method {
 	case "initialize":
-		return &JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      request.ID,
-			Result: InitialisationResult{
-				ProtocolVersion: "2024-11-05",
-				ServerInfo:      ServerInfo{Name: s.name, Version: s.version, ClusterName: s.clusterName, ContextName: s.contextName},
-				Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
-				Capabilities:    Capabilities{},
-			},
+		return InitialisationResult{
+			ProtocolVersion: "2024-11-05",
+			ServerInfo:      ServerInfo{Name: s.name, Version: s.version, ClusterName: s.clusterName, ContextName: s.contextName},
+			Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
+			Capabilities:    Capabilities{},
 		}, nil
 	case "tools/list":
 		toolDefs := make([]ToolDefinition, 0, len(s.tools))
@@ -49,11 +45,7 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 				InputSchema: tool.InputSchema(),
 			})
 		}
-		return &JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      request.ID,
-			Result:  map[string]any{"tools": toolDefs},
-		}, nil
+		return ListResult{toolDefs}, nil
 	case "tools/call":
 		var p struct {
 			Name      string          `json:"name"`
@@ -69,11 +61,7 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 				if err != nil {
 					return nil, &rpcError{-32603, err}
 				}
-				return &JSONRPCResponse{
-					JSONRPC: "2.0",
-					ID:      request.ID,
-					Result:  map[string]any{"content": []map[string]string{{"type": "text", "text": result}}},
-				}, nil
+				return ExecutionResult{Content: []ContentItem{{Type: "text", Text: result}}}, nil
 			}
 		}
 		return nil, &rpcError{-32603, fmt.Errorf("unknown tool: %s", p.Name)}
@@ -81,8 +69,8 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 	return nil, &rpcError{-32601, fmt.Errorf("unknown method: %s", request.Method)}
 }
 
-func (s *Server) Start() {
-	scanner := bufio.NewScanner(os.Stdin)
+func (s *Server) Start(input io.Reader, output io.Writer) {
+	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // A large tools/call payload will silently fail with token too long.
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -90,25 +78,29 @@ func (s *Server) Start() {
 		request := JSONRPCRequest{}
 		err := json.Unmarshal(line, &request)
 		if err != nil {
-			handleError(request.ID, -32700, err)
+			handleError(output, request.ID, -32700, err)
 			continue
 		}
-		response, rpcErr := s.process(request)
+		result, rpcErr := s.process(request)
 		if rpcErr != nil {
-			handleError(request.ID, rpcErr.code, rpcErr.err)
+			handleError(output, request.ID, rpcErr.code, rpcErr.err)
 			continue
 		}
-		if response == nil {
+		if result == nil {
 			continue
 		}
-		err = json.NewEncoder(os.Stdout).Encode(response)
+		err = json.NewEncoder(output).Encode(JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      request.ID,
+			Result:  result,
+		})
 		if err != nil {
-			handleError(request.ID, -32603, err)
+			handleError(output, request.ID, -32603, err)
 		}
 	}
 }
 
-func handleError(requestId any, errorCode int, err error) {
+func handleError(output io.Writer, requestId any, errorCode int, err error) {
 	response := JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      requestId,
@@ -116,7 +108,7 @@ func handleError(requestId any, errorCode int, err error) {
 			Code:    errorCode,
 			Message: err.Error(),
 		}}
-	_ = json.NewEncoder(os.Stdout).Encode(response)
+	_ = json.NewEncoder(output).Encode(response)
 }
 
 func (s *Server) Register(tool Tool) {
