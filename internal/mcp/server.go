@@ -24,21 +24,17 @@ func New(name string, version string, contextName string, clusterName string) *S
 	}
 }
 
-func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
+func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 	if request.ID == nil {
 		return nil, nil
 	}
 	switch request.Method {
 	case "initialize":
-		return &JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      request.ID,
-			Result: InitialisationResult{
-				ProtocolVersion: "2024-11-05",
-				ServerInfo:      ServerInfo{Name: s.name, Version: s.version, ClusterName: s.clusterName, ContextName: s.contextName},
-				Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
-				Capabilities:    Capabilities{},
-			},
+		return InitialisationResult{
+			ProtocolVersion: "2024-11-05",
+			ServerInfo:      ServerInfo{Name: s.name, Version: s.version, ClusterName: s.clusterName, ContextName: s.contextName},
+			Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
+			Capabilities:    Capabilities{},
 		}, nil
 	case "tools/list":
 		toolDefs := make([]ToolDefinition, 0, len(s.tools))
@@ -49,11 +45,7 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 				InputSchema: tool.InputSchema(),
 			})
 		}
-		return &JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      request.ID,
-			Result:  map[string]any{"tools": toolDefs},
-		}, nil
+		return map[string]any{"tools": toolDefs}, nil
 	case "tools/call":
 		var p struct {
 			Name      string          `json:"name"`
@@ -69,11 +61,7 @@ func (s *Server) process(request JSONRPCRequest) (*JSONRPCResponse, *rpcError) {
 				if err != nil {
 					return nil, &rpcError{-32603, err}
 				}
-				return &JSONRPCResponse{
-					JSONRPC: "2.0",
-					ID:      request.ID,
-					Result:  map[string]any{"content": []map[string]string{{"type": "text", "text": result}}},
-				}, nil
+				return map[string]any{"content": []map[string]string{{"type": "text", "text": result}}}, nil
 			}
 		}
 		return nil, &rpcError{-32603, fmt.Errorf("unknown tool: %s", p.Name)}
@@ -93,15 +81,19 @@ func (s *Server) Start(input io.Reader, output io.Writer) {
 			handleError(output, request.ID, -32700, err)
 			continue
 		}
-		response, rpcErr := s.process(request)
+		result, rpcErr := s.process(request)
 		if rpcErr != nil {
 			handleError(output, request.ID, rpcErr.code, rpcErr.err)
 			continue
 		}
-		if response == nil {
+		if result == nil {
 			continue
 		}
-		err = json.NewEncoder(output).Encode(response)
+		err = json.NewEncoder(output).Encode(JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      request.ID,
+			Result:  result,
+		})
 		if err != nil {
 			handleError(output, request.ID, -32603, err)
 		}
