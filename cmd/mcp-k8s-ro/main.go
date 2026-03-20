@@ -56,7 +56,8 @@ func main() {
 	server.Register(tools.NewEventGetter(k8sClient))
 	server.Register(tools.NewPodTopper(k8sClient))
 	server.Register(tools.NewNodeTopper(k8sClient))
-	server.Start()
+
+	server.Start(os.Stdin, os.Stdout)
 }
 
 func updateMetadata() {

@@ -29,3 +29,8 @@ packages:
       dynamicClient:
       discoveryClient:
       restMapper:
+  github.com/your-ko/mcp-k8s-ro/internal/mcp:
+    config:
+      all: false
+    interfaces:
+      Tool:
