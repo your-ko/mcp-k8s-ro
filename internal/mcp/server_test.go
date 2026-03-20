@@ -8,17 +8,20 @@ func TestServer_Register(t *testing.T) {
 		version     string
 		contextName string
 		clusterName string
-		tools       []Tool
-	}
-	type args struct {
-		tool Tool
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "tool registered",
+			fields: fields{
+				name:        "test",
+				version:     "test",
+				contextName: "test",
+				clusterName: "test",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -27,9 +30,12 @@ func TestServer_Register(t *testing.T) {
 				version:     tt.fields.version,
 				contextName: tt.fields.contextName,
 				clusterName: tt.fields.clusterName,
-				tools:       tt.fields.tools,
 			}
-			s.Register(tt.args.tool)
+			s.Register(NewMockTool(t))
+
+			if len(s.tools) != 1 {
+				t.Errorf("expected %d tool registered, got %d\n", 1, len(s.tools))
+			}
 		})
 	}
 }
