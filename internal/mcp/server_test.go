@@ -63,7 +63,7 @@ func TestServer_process(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         args
-		tools        func(t *testing.T) []Tool
+		tools        func() []Tool
 		wantResponse any
 		wantErr      *rpcError
 	}{
@@ -95,6 +95,22 @@ func TestServer_process(t *testing.T) {
 			}},
 			wantResponse: ListResult{Tools: make([]ToolDefinition, 0)},
 		},
+		{
+			name: "tools_list_returns_registered_tools",
+			args: args{request: JSONRPCRequest{
+				ID:     1,
+				Method: "tools/list",
+			}},
+
+			tools: func() []Tool {
+				m := NewMockTool(t)
+				m.On("Name").Return("my_tool")
+				m.On("Description").Return("tooling")
+				m.On("InputSchema").Return(InputSchema{Type: "object"})
+				return []Tool{m}
+			},
+			wantResponse: ListResult{Tools: []ToolDefinition{{"my_tool", "tooling", InputSchema{Type: "object"}}}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -104,6 +120,10 @@ func TestServer_process(t *testing.T) {
 				contextName: serverData.contextName,
 				clusterName: serverData.clusterName,
 			}
+			for _, tool := range tt.tools() {
+				s.Register(tool)
+			}
+
 			response, err := s.process(tt.args.request)
 
 			if tt.wantErr != nil && err == nil {
