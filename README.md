@@ -107,7 +107,45 @@ If your kubeconfig is in a non-standard location, pass it via `KUBECONFIG`:
 }
 ```
 
-The server locks to the current kubeconfig context at startup. 
-The active context and cluster name are included in every tool response so you always know which 
+The server locks to the current kubeconfig context at startup.
+The active context and cluster name are included in every tool response so you always know which
 cluster Claude is talking to.
 
+## Single-cluster design
+
+The server intentionally operates on one kubeconfig context and provides no tool to switch clusters
+at runtime. The reasons are:
+
+- **Prompt injection isolation** — a malicious value in one cluster's resources (e.g. a pod
+  annotation) cannot instruct Claude to pivot to a different cluster, including production.
+- **Explicit audit boundary** — every tool response includes the context and cluster name, so
+  there is never ambiguity about which cluster was queried.
+
+**To point the server at a different cluster**, stop the server, switch context, and restart:
+
+```bash
+kubectl config use-context my-other-cluster
+# then restart the MCP server / reload Claude Desktop
+```
+
+**To work with multiple clusters simultaneously**, register a separate server instance per cluster
+in your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "k8s-staging": {
+      "type": "stdio",
+      "command": "/path/to/bin/mcp-k8s-ro",
+      "env": { "KUBECONFIG": "/path/to/.kube/config" }
+    },
+    "k8s-prod": {
+      "type": "stdio",
+      "command": "/path/to/bin/mcp-k8s-ro",
+      "env": { "KUBECONFIG": "/path/to/.kube/config-prod" }
+    }
+  }
+}
+```
+
+Claude will address each server by name and each instance only ever sees its own cluster.
