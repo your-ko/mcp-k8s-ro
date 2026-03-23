@@ -33,7 +33,7 @@ func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 		return InitialisationResult{
 			ProtocolVersion: "2024-11-05",
 			ServerInfo:      ServerInfo{Name: s.name, Version: s.version, ClusterName: s.clusterName, ContextName: s.contextName},
-			Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
+			Instructions:    getInstructions(),
 			Capabilities:    Capabilities{},
 		}, nil
 	case "tools/list":
@@ -113,4 +113,10 @@ func handleError(output io.Writer, requestId any, errorCode int, err error) {
 
 func (s *Server) Register(tool Tool) {
 	s.tools = append(s.tools, tool)
+}
+
+func getInstructions() string {
+	return "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, " +
+		"or otherwise mutate Kubernetes resources: do NOT even attempt it. " +
+		"Instead, print  the equivalent kubectl command and tell the user to run it manually."
 }
