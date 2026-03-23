@@ -86,7 +86,7 @@ func TestServer_process(t *testing.T) {
 				ProtocolVersion: "2024-11-05",
 				ServerInfo:      ServerInfo{serverData.name, serverData.version, serverData.clusterName, serverData.contextName},
 				Capabilities:    Capabilities{},
-				Instructions:    "This is a READ-ONLY server. For any operation that would create, update, delete, scale, restart, exec into, or otherwise mutate Kubernetes resources: do NOT even attempt it. Instead, print  the equivalent kubectl command and tell the user to run it manually.",
+				Instructions:    getInstructions(),
 			},
 		},
 		{
