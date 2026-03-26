@@ -503,13 +503,9 @@ func sanitize(item *unstructured.Unstructured) error {
 		}
 
 	case "CertificateSigningRequest":
-		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
-			if _, ok := spec["request"]; ok {
-				spec["request"] = "*****"
-				if err := unstructured.SetNestedMap(item.Object, spec, "spec"); err != nil {
-					return err
-				}
-			}
+		err := unstructured.SetNestedField(item.Object, "*****", "spec", "request")
+		if err != nil {
+			return err
 		}
 
 	case "Certificate":
@@ -524,8 +520,12 @@ func sanitize(item *unstructured.Unstructured) error {
 		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
 			for _, condition := range conditions {
 				if condMap, ok := condition.(map[string]interface{}); ok {
-					if _, ok := condMap["message"]; ok {
-						condMap["message"] = "*****"
+					if message, ok := condMap["message"]; ok {
+						if messageStr, ok := message.(string); ok {
+							if strings.HasPrefix(messageStr, "-----BEGIN CERTIFICATE-----") {
+								condMap["message"] = "*****"
+							}
+						}
 					}
 				}
 			}
