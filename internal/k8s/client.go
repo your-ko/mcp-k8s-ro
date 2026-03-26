@@ -523,19 +523,23 @@ func sanitize(item *unstructured.Unstructured) error {
 			}
 		}
 		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
+			redacted := false
 			for _, condition := range conditions {
 				if condMap, ok := condition.(map[string]interface{}); ok {
 					if message, ok := condMap["message"]; ok {
 						if messageStr, ok := message.(string); ok {
 							if strings.HasPrefix(messageStr, "-----BEGIN CERTIFICATE-----") {
 								condMap["message"] = "*****"
+								redacted = true
 							}
 						}
 					}
 				}
 			}
-			if err := unstructured.SetNestedSlice(item.Object, conditions, "status", "conditions"); err != nil {
-				return err
+			if redacted {
+				if err := unstructured.SetNestedSlice(item.Object, conditions, "status", "conditions"); err != nil {
+					return err
+				}
 			}
 		}
 	}
