@@ -416,3 +416,205 @@ func Test_setResourceSpecificFields(t *testing.T) {
 		})
 	}
 }
+
+func Test_sanitize(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       func() *unstructured.Unstructured
+		wantErr     bool
+		assertField func(t *testing.T, item *unstructured.Unstructured)
+	}{
+		{
+			name: "managedFields removed",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				_ = unstructured.SetNestedField(u.Object, []interface{}{"managed"}, "metadata", "managedFields")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				_, ok, _ := unstructured.NestedFieldNoCopy(item.Object, "metadata", "managedFields")
+				if ok {
+					t.Error("expected managedFields to be removed")
+				}
+			},
+		},
+		{
+			name: "secret data values masked",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("Secret")
+				_ = unstructured.SetNestedField(u.Object, map[string]interface{}{
+					"password": "super-secret",
+					"token":    "abc123",
+				}, "data")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				data, _, _ := unstructured.NestedMap(item.Object, "data")
+				for k, v := range data {
+					if v != "*****" {
+						t.Errorf("expected data[%q] to be masked, got %q", k, v)
+					}
+				}
+			},
+		},
+		{
+			name: "secret stringData values masked",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("Secret")
+				_ = unstructured.SetNestedField(u.Object, map[string]interface{}{
+					"api-key": "plaintext-secret",
+				}, "stringData")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				sd, _, _ := unstructured.NestedMap(item.Object, "stringData")
+				for k, v := range sd {
+					if v != "*****" {
+						t.Errorf("expected stringData[%q] to be masked, got %q", k, v)
+					}
+				}
+			},
+		},
+		{
+			name: "secret with no data is a no-op",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("Secret")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				_, dataOk, _ := unstructured.NestedMap(item.Object, "data")
+				_, sdOk, _ := unstructured.NestedMap(item.Object, "stringData")
+				if dataOk || sdOk {
+					t.Error("expected no data or stringData fields")
+				}
+			},
+		},
+		{
+			name: "CSR spec.request redacted",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("CertificateSigningRequest")
+				_ = unstructured.SetNestedField(u.Object, "LS0tLS1CRUdJTi...", "spec", "request")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				v, _, _ := unstructured.NestedString(item.Object, "spec", "request")
+				if v != "*****" {
+					t.Errorf("expected spec.request to be masked, got %q", v)
+				}
+			},
+		},
+		{
+			name: "CSR without spec.request is a no-op",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("CertificateSigningRequest")
+				_ = unstructured.SetNestedField(u.Object, "system:nodes", "spec", "signerName")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				_, ok, _ := unstructured.NestedFieldNoCopy(item.Object, "spec", "request")
+				if ok {
+					t.Error("expected no spec.request field to be written")
+				}
+			},
+		},
+		{
+			name: "Certificate spec.keystores redacted",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("Certificate")
+				_ = unstructured.SetNestedField(u.Object, map[string]interface{}{
+					"jks": map[string]interface{}{"create": true},
+				}, "spec", "keystores")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				v, _, _ := unstructured.NestedString(item.Object, "spec", "keystores")
+				if v != "*****" {
+					t.Errorf("expected spec.keystores to be masked, got %q", v)
+				}
+			},
+		},
+		{
+			name: "Certificate without keystores is a no-op",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("Certificate")
+				_ = unstructured.SetNestedField(u.Object, "letsencrypt", "spec", "issuerRef")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				_, ok, _ := unstructured.NestedFieldNoCopy(item.Object, "spec", "keystores")
+				if ok {
+					t.Error("expected no spec.keystores field to be written")
+				}
+			},
+		},
+		{
+			name: "Certificate PEM condition message redacted",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("Certificate")
+				_ = unstructured.SetNestedSlice(u.Object, []interface{}{
+					map[string]interface{}{
+						"type":    "Ready",
+						"status":  "True",
+						"message": "-----BEGIN CERTIFICATE-----\nMIIBkTCB...\n-----END CERTIFICATE-----",
+					},
+				}, "status", "conditions")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				conditions, _, _ := unstructured.NestedSlice(item.Object, "status", "conditions")
+				for _, c := range conditions {
+					cm := c.(map[string]interface{})
+					if msg, ok := cm["message"].(string); ok && msg != "*****" {
+						t.Errorf("expected PEM condition message to be masked, got %q", msg)
+					}
+				}
+			},
+		},
+		{
+			name: "Certificate non-PEM condition message left intact",
+			input: func() *unstructured.Unstructured {
+				u := &unstructured.Unstructured{}
+				u.SetKind("Certificate")
+				_ = unstructured.SetNestedSlice(u.Object, []interface{}{
+					map[string]interface{}{
+						"type":    "Ready",
+						"status":  "True",
+						"message": "Certificate is up to date and has not expired",
+					},
+				}, "status", "conditions")
+				return u
+			},
+			assertField: func(t *testing.T, item *unstructured.Unstructured) {
+				conditions, _, _ := unstructured.NestedSlice(item.Object, "status", "conditions")
+				for _, c := range conditions {
+					cm := c.(map[string]interface{})
+					if msg, ok := cm["message"].(string); ok && msg == "*****" {
+						t.Error("expected non-PEM condition message to be left intact")
+					}
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			item := tt.input()
+			err := sanitize(item)
+			if tt.wantErr && err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			tt.assertField(t, item)
+		})
+	}
+}
