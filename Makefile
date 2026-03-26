@@ -24,7 +24,7 @@ test:
 	go test ./...
 
 clean:
-	rm -f $(BINARY)
+	rm -rf bin/
 
 docker-build:
 	docker build . -t mcp-k8s-ro
