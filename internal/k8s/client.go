@@ -270,70 +270,9 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return "", err
 	}
 
-	switch item.GetKind() {
-	case "Secret":
-		// mask secret to prevent leaking them
-		if data, ok, err := unstructured.NestedMap(item.Object, "data"); ok && err == nil {
-			secrets := make(map[string]interface{})
-			for key := range data {
-				secrets[key] = "*****"
-			}
-			err = unstructured.SetNestedMap(item.Object, secrets, "data")
-			if err != nil {
-				return "", err
-			}
-		}
-		if stringData, ok, err := unstructured.NestedMap(item.Object, "stringData"); ok && err == nil {
-			secrets := make(map[string]interface{})
-			for key := range stringData {
-				secrets[key] = "*****"
-			}
-			err = unstructured.SetNestedMap(item.Object, secrets, "stringData")
-			if err != nil {
-				return "", err
-			}
-		}
-	case "CertificateSigningRequest":
-		// save tokens
-		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
-			if _, ok := spec["request"]; ok {
-				spec["request"] = "*****"
-			}
-			err := unstructured.SetNestedMap(item.Object, spec, "spec")
-			if err != nil {
-				return "", err
-			}
-		}
-	case "Certificate":
-		// save tokens
-		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
-			if _, ok := spec["keystores"]; ok {
-				spec["keystores"] = "*****"
-			}
-			err := unstructured.SetNestedMap(item.Object, spec, "spec")
-			if err != nil {
-				return "", err
-			}
-		}
-		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
-			for _, condition := range conditions {
-				conditionMap, ok := condition.(map[string]interface{})
-				if !ok {
-					// in case if condition is not a map
-					continue
-				}
-				if _, ok := conditionMap["message"]; ok {
-					conditionMap["message"] = "*****"
-				}
-			}
-			err := unstructured.SetNestedSlice(item.Object, conditions, "status", "conditions")
-			if err != nil {
-				return "", err
-			}
-		}
+	if err = sanitize(item); err != nil {
+		return "", err
 	}
-	// this reduces context (hence used tokens) a lot
-	unstructured.RemoveNestedField(item.Object, "metadata", "managedFields")
 
 	yamlBytes, err := yaml.Marshal(item.Object)
 	if err != nil {
@@ -541,6 +480,62 @@ func (c *Client) TopNodes(ctx context.Context) (string, error) {
 		})
 	}
 	return serializeList(result, c.Header())
+}
+
+// sanitize removes or redacts fields before the object is serialized and returned.
+// It mutates the object in place.
+func sanitize(item *unstructured.Unstructured) error {
+	// Always strip managedFields — no diagnostic value, saves tokens.
+	unstructured.RemoveNestedField(item.Object, "metadata", "managedFields")
+
+	switch item.GetKind() {
+	case "Secret":
+		for _, field := range []string{"data", "stringData"} {
+			if m, ok, err := unstructured.NestedMap(item.Object, field); ok && err == nil {
+				redacted := make(map[string]interface{}, len(m))
+				for k := range m {
+					redacted[k] = "*****"
+				}
+				if err := unstructured.SetNestedMap(item.Object, redacted, field); err != nil {
+					return err
+				}
+			}
+		}
+
+	case "CertificateSigningRequest":
+		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
+			if _, ok := spec["request"]; ok {
+				spec["request"] = "*****"
+				if err := unstructured.SetNestedMap(item.Object, spec, "spec"); err != nil {
+					return err
+				}
+			}
+		}
+
+	case "Certificate":
+		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
+			if _, ok := spec["keystores"]; ok {
+				spec["keystores"] = "*****"
+				if err := unstructured.SetNestedMap(item.Object, spec, "spec"); err != nil {
+					return err
+				}
+			}
+		}
+		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
+			for _, condition := range conditions {
+				if condMap, ok := condition.(map[string]interface{}); ok {
+					if _, ok := condMap["message"]; ok {
+						condMap["message"] = "*****"
+					}
+				}
+			}
+			if err := unstructured.SetNestedSlice(item.Object, conditions, "status", "conditions"); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func serializeList[T any](list []T, header string) (string, error) {
