@@ -260,32 +260,73 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return "", err
 	}
 
-	var res *unstructured.Unstructured
+	var item *unstructured.Unstructured
 	if namespaced && namespace != "" {
-		res, err = c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		item, err = c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	} else {
-		res, err = c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+		item, err = c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 	}
 	if err != nil {
 		return "", err
 	}
 
 	// this reduces context (hence used tokens) a lot
-	unstructured.RemoveNestedField(res.Object, "metadata", "managedFields")
+	unstructured.RemoveNestedField(item.Object, "metadata", "managedFields")
 
-	if res.GetKind() == "Secret" {
-		if data, ok, err := unstructured.NestedMap(res.Object, "data"); ok && err == nil {
+	switch item.GetKind() {
+	case "Secret":
+		// mask secret to prevent leaking them
+		if data, ok, err := unstructured.NestedMap(item.Object, "data"); ok && err == nil {
 			secrets := make(map[string]interface{})
 			for key := range data {
 				secrets[key] = "*****"
 			}
-			err := unstructured.SetNestedMap(res.Object, secrets, "data")
+			err = unstructured.SetNestedMap(item.Object, secrets, "data")
+			if err != nil {
+				return "", err
+			}
+		}
+	case "CertificateSigningRequest":
+		// save tokens
+		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
+			if _, ok := spec["request"]; ok {
+				spec["request"] = "*****"
+			}
+			err := unstructured.SetNestedMap(item.Object, spec, "spec")
+			if err != nil {
+				return "", err
+			}
+		}
+	case "Certificate":
+		// save tokens
+		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
+			if _, ok := spec["keystores"]; ok {
+				spec["keystores"] = "*****"
+			}
+			err := unstructured.SetNestedMap(item.Object, spec, "spec")
+			if err != nil {
+				return "", err
+			}
+		}
+		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
+			for _, condition := range conditions {
+				conditionMap, ok := condition.(map[string]interface{})
+				if !ok {
+					// in case if condition is not a map
+					continue
+				}
+				if _, ok := conditionMap["message"]; ok {
+					conditionMap["message"] = "*****"
+				}
+			}
+			err := unstructured.SetNestedSlice(item.Object, conditions, "status", "conditions")
 			if err != nil {
 				return "", err
 			}
 		}
 	}
-	yamlBytes, err := yaml.Marshal(res.Object)
+
+	yamlBytes, err := yaml.Marshal(item.Object)
 	if err != nil {
 		return "", err
 	}
