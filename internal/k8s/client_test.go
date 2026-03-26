@@ -294,6 +294,34 @@ func Test_setResourceSpecificFields(t *testing.T) {
 			want: listResourcesOutput{Type: "ClusterIP", ClusterIP: "10.0.0.1", Ports: "80/TCP,443/TCP"},
 		},
 		{
+			name: "loadbalancer service sets externalIP from ip",
+			item: func() unstructured.Unstructured {
+				u := unstructured.Unstructured{}
+				u.SetKind("Service")
+				_ = unstructured.SetNestedField(u.Object, "LoadBalancer", "spec", "type")
+				_ = unstructured.SetNestedField(u.Object, "10.0.0.2", "spec", "clusterIP")
+				_ = unstructured.SetNestedSlice(u.Object, []interface{}{
+					map[string]interface{}{"ip": "1.2.3.4"},
+				}, "status", "loadBalancer", "ingress")
+				return u
+			}(),
+			want: listResourcesOutput{Type: "LoadBalancer", ClusterIP: "10.0.0.2", ExternalIP: "1.2.3.4"},
+		},
+		{
+			name: "loadbalancer service sets externalIP from hostname",
+			item: func() unstructured.Unstructured {
+				u := unstructured.Unstructured{}
+				u.SetKind("Service")
+				_ = unstructured.SetNestedField(u.Object, "LoadBalancer", "spec", "type")
+				_ = unstructured.SetNestedField(u.Object, "10.0.0.3", "spec", "clusterIP")
+				_ = unstructured.SetNestedSlice(u.Object, []interface{}{
+					map[string]interface{}{"hostname": "abc.elb.amazonaws.com"},
+				}, "status", "loadBalancer", "ingress")
+				return u
+			}(),
+			want: listResourcesOutput{Type: "LoadBalancer", ClusterIP: "10.0.0.3", ExternalIP: "abc.elb.amazonaws.com"},
+		},
+		{
 			name: "pod sets node, podIP, ready count and restarts",
 			item: func() unstructured.Unstructured {
 				u := unstructured.Unstructured{}
