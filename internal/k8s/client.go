@@ -283,6 +283,16 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 				return "", err
 			}
 		}
+		if stringData, ok, err := unstructured.NestedMap(item.Object, "stringData"); ok && err == nil {
+			secrets := make(map[string]interface{})
+			for key := range stringData {
+				secrets[key] = "*****"
+			}
+			err = unstructured.SetNestedMap(item.Object, secrets, "stringData")
+			if err != nil {
+				return "", err
+			}
+		}
 	case "CertificateSigningRequest":
 		// save tokens
 		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
