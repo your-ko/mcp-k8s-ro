@@ -87,6 +87,9 @@ func (c *Client) resolveGVR(resource string) (schema.GroupVersionResource, bool,
 	return gvr, mapping.Scope.Name() == meta.RESTScopeNameNamespace, nil
 }
 
+// ListResources lists resources if the given type in the given namespace.
+// If the resource is namespaced and the namespace is empty - the default one is used.
+// If the resources is not namespaced, then the namespace is ignored
 func (c *Client) ListResources(ctx context.Context, resource, namespace string) (string, error) {
 	gvr, namespaced, err := c.resolveGVR(resource)
 	if err != nil {
@@ -104,14 +107,17 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 	return serializeList(normaliseList(list), c.Header())
 }
 
+// Header generates header with cluster info to be added to all responses
 func (c *Client) Header() string {
 	return fmt.Sprintf("# context: %s | cluster: %s\n", c.contextName, c.clusterName)
 }
 
+// ContextSummary generates cluster context to be added to all responses
 func (c *Client) ContextSummary() string {
 	return fmt.Sprintf("%s (%s)", c.contextName, c.clusterName)
 }
 
+// normaliseList creates a resource list output, it picks only important fields
 func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 	result := make([]listResourcesOutput, 0)
 	for _, item := range list.Items {
@@ -128,6 +134,7 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 	return result
 }
 
+// setResourceSpecificFields adds to the output fields specific per resource and important for the debugging
 func setResourceSpecificFields(item unstructured.Unstructured, res *listResourcesOutput) {
 	switch item.GetKind() {
 	case "Secret":
@@ -254,6 +261,9 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 	}
 }
 
+// GetResource find the resource by name, type and namespace.
+// If the resource is namespaced and the namespace is empty - the default one is used.
+// If the resources is not namespaced, then the namespace is ignored
 func (c *Client) GetResource(ctx context.Context, name string, resource string, namespace string) (string, error) {
 	gvr, namespaced, err := c.resolveGVR(resource)
 	if err != nil {
@@ -281,6 +291,10 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	return c.Header() + string(yamlBytes), nil
 }
 
+// GetLogs fetches pod logs.
+// if 'previous == true', then the logs of the previous pods will be fetched
+// 'container' - container name can be specified if the pod has more than one
+// 'tailLines' - specifies how many lines of logs to fetch. Should be positive number, otherwise ignored
 func (c *Client) GetLogs(ctx context.Context, podName string, namespace string, tailLines int64, previous bool, container string) (string, error) {
 	opts := &v1.PodLogOptions{}
 	if tailLines > 0 {
@@ -319,6 +333,7 @@ var skipGroups = map[string]bool{
 	"coordination.k8s.io":    true, // leases (internal leader election)
 }
 
+// ListApiResources lists all API resources registered in the cluster. Ignores those which are present in the 'skipGroups'
 func (c *Client) ListApiResources(groupFilter string) (string, error) {
 	resources, err := c.discovery.ServerPreferredResources()
 	if err != nil {
@@ -361,6 +376,8 @@ func (c *Client) ListApiResources(groupFilter string) (string, error) {
 	return serializeList(result, c.Header())
 }
 
+// GetEvents fetches cluster events per namespace
+// 'limit' specifies how many lines should be fetched. Should be positive number, otherwise ignored.
 func (c *Client) GetEvents(ctx context.Context, namespace string, limit int64) (string, error) {
 	opts := metav1.ListOptions{}
 	if limit > 0 {
@@ -409,6 +426,8 @@ func (c *Client) GetEvents(ctx context.Context, namespace string, limit int64) (
 	return serializeList(result, c.Header())
 }
 
+// TopPods is the analogue of 'kubectl top pods'
+// Requires metrics server be installed.
 func (c *Client) TopPods(ctx context.Context, namespace string) (string, error) {
 	podMetricsList, err := c.metricClient.MetricsV1beta1().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -441,6 +460,8 @@ func (c *Client) TopPods(ctx context.Context, namespace string) (string, error) 
 	return serializeList(result, c.Header())
 }
 
+// TopNodes is the analogue of 'kubectl top nodes'
+// Requires metrics server be installed.
 func (c *Client) TopNodes(ctx context.Context) (string, error) {
 	nodeMetrics, err := c.metricClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
 	if err != nil {
