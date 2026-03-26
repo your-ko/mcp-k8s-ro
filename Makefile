@@ -18,7 +18,7 @@ build:
     -o bin/mcp-k8s-ro ./cmd/mcp-k8s-ro/
 
 run: build
-	./$(BINARY)
+	./bin/$(BINARY)
 
 test:
 	go test ./...
