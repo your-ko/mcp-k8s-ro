@@ -515,6 +515,8 @@ func sanitize(item *unstructured.Unstructured) error {
 		}
 
 	case "Certificate":
+		// spec.keystores is only present when the Certificate is configured to produce keystore output
+		// (JKS or PKCS12). Most certificates don't use it, so this is a no-op in most cases.
 		if spec, ok, err := unstructured.NestedFieldNoCopy(item.Object, "spec"); ok && err == nil {
 			if specMap, ok := spec.(map[string]interface{}); ok {
 				if _, ok := specMap["keystores"]; ok {
