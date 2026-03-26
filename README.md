@@ -20,6 +20,18 @@ A read-only MCP server that gives Claude access to Kubernetes clusters. Built in
 - **Mutation suggestions** — if a mutating operation is needed, the server prints the equivalent `kubectl` command for the user to run manually.
 - **Secret masking** — secret values are redacted by default.
 
+## Redacted fields
+
+| Object/Field                                           | Reason                                                  | 
+|--------------------------------------------------------|---------------------------------------------------------|
+| Secret.data                                            | Security reasons: Secrets leak prevention               |
+| Secret.stringData                                      | Security reasons: Secrets leak prevention               |
+| CertificateSigningRequest.spec.request                 | Large base64 PEM blob, no diagnostic value, save tokens |
+| Certificate (cert-manager) .spec.keystores             | Cert chain PEM blobs, no diagnostic value, save tokens  |
+| Certificate (cert-manager) status.conditions[].message | Cert chain PEM blobs, no diagnostic value, save tokens  |
+| *.managedFields                                        | No diagnostic value, save tokens                        |
+
+
 ## Tools
 
 | Tool                      | Description                                                                                                                                                                                 |
