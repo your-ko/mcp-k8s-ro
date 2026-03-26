@@ -86,12 +86,6 @@ type InputSchema struct {
 	Required   []string        `json:"required,omitempty"`
 }
 
-// Property describes a single field within an InputSchema.
-type Property struct {
-	Type        string `json:"type"`
-	Description string `json:"description"`
-}
-
 // ToolDefinition is the wire representation of a tool in the tools/list response.
 type ToolDefinition struct {
 	Name        string      `json:"name"`
