@@ -163,6 +163,15 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 			}
 		}
 		res.Ports = strings.Join(portsInfo, ",")
+		if ingresses, ok, err := unstructured.NestedSlice(item.Object, "status", "loadBalancer", "ingress"); ok && err == nil && len(ingresses) > 0 {
+			if ingress, ok := ingresses[0].(map[string]interface{}); ok {
+				if ip, ok := ingress["ip"].(string); ok && ip != "" {
+					res.ExternalIP = ip
+				} else if hostname, ok := ingress["hostname"].(string); ok && hostname != "" {
+					res.ExternalIP = hostname
+				}
+			}
+		}
 	case "Pod":
 		if nodeName, ok, err := unstructured.NestedString(item.Object, "spec", "nodeName"); ok && err == nil {
 			res.Node = nodeName
