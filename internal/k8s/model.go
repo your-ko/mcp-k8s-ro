@@ -16,7 +16,7 @@ type listResourcesOutput struct {
 	PodIP                 string `yaml:"podIP,omitempty"`
 	Ports                 string `yaml:"ports,omitempty"`
 	Node                  string `yaml:"node,omitempty"`
-	Restarts              int    `yaml:"restarts,omitempty"`
+	Restarts              int    `yaml:"restarts"`
 	Status                string `yaml:"status,omitempty"`
 	StateReason           string `yaml:"stateReason,omitempty"`
 	LastTerminationReason string `yaml:"lastTerminationReason,omitempty"`
