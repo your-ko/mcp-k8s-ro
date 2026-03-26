@@ -491,17 +491,18 @@ func sanitize(item *unstructured.Unstructured) error {
 	switch item.GetKind() {
 	case "Secret":
 		for _, field := range []string{"data", "stringData"} {
-			if m, ok, err := unstructured.NestedMap(item.Object, field); ok && err == nil {
-				redacted := make(map[string]interface{}, len(m))
-				for k := range m {
-					redacted[k] = "*****"
-				}
-				if err := unstructured.SetNestedMap(item.Object, redacted, field); err != nil {
-					return err
+			if raw, ok, err := unstructured.NestedFieldNoCopy(item.Object, field); ok && err == nil {
+				if m, ok := raw.(map[string]interface{}); ok {
+					redacted := make(map[string]interface{}, len(m))
+					for k := range m {
+						redacted[k] = "*****"
+					}
+					if err := unstructured.SetNestedMap(item.Object, redacted, field); err != nil {
+						return err
+					}
 				}
 			}
 		}
-
 	case "CertificateSigningRequest":
 		err := unstructured.SetNestedField(item.Object, "*****", "spec", "request")
 		if err != nil {
