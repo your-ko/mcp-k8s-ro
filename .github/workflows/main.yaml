@@ -70,7 +70,7 @@ jobs:
             org.opencontainers.image.created=${{ steps.timestamp.outputs.BUILD_DATE }}
             org.opencontainers.image.revision=${{ github.sha }}
 
-      - name: Build and push image
+      - name: Build image
         uses: docker/build-push-action@v6.19.2
         with:
           context: .
