@@ -427,7 +427,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "managedFields removed",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				_ = unstructured.SetNestedField(u.Object, []interface{}{"managed"}, "metadata", "managedFields")
 				return u
 			},
@@ -441,7 +441,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "secret data values masked",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("Secret")
 				_ = unstructured.SetNestedField(u.Object, map[string]interface{}{
 					"password": "super-secret",
@@ -461,7 +461,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "secret stringData values masked",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("Secret")
 				_ = unstructured.SetNestedField(u.Object, map[string]interface{}{
 					"api-key": "plaintext-secret",
@@ -480,7 +480,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "secret with no data is a no-op",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("Secret")
 				return u
 			},
@@ -495,7 +495,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "CSR spec.request redacted",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("CertificateSigningRequest")
 				_ = unstructured.SetNestedField(u.Object, "LS0tLS1CRUdJTi...", "spec", "request")
 				return u
@@ -510,7 +510,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "CSR without spec.request is a no-op",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("CertificateSigningRequest")
 				_ = unstructured.SetNestedField(u.Object, "system:nodes", "spec", "signerName")
 				return u
@@ -525,7 +525,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "Certificate spec.keystores redacted",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("Certificate")
 				_ = unstructured.SetNestedField(u.Object, map[string]interface{}{
 					"jks": map[string]interface{}{"create": true},
@@ -542,7 +542,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "Certificate without keystores is a no-op",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("Certificate")
 				_ = unstructured.SetNestedField(u.Object, "letsencrypt", "spec", "issuerRef")
 				return u
@@ -557,7 +557,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "Certificate PEM condition message redacted",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("Certificate")
 				_ = unstructured.SetNestedSlice(u.Object, []interface{}{
 					map[string]interface{}{
@@ -581,7 +581,7 @@ func Test_sanitize(t *testing.T) {
 		{
 			name: "Certificate non-PEM condition message left intact",
 			input: func() *unstructured.Unstructured {
-				u := &unstructured.Unstructured{}
+				u := &unstructured.Unstructured{Object: map[string]interface{}{}}
 				u.SetKind("Certificate")
 				_ = unstructured.SetNestedSlice(u.Object, []interface{}{
 					map[string]interface{}{
