@@ -635,7 +635,7 @@ func Test_sanitize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			item := tt.input()
-			err := sanitize(item)
+			_, err := sanitize(item)
 			if tt.wantErr && err == nil {
 				t.Fatal("expected error, got nil")
 			}
