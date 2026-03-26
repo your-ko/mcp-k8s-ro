@@ -341,6 +341,28 @@ func Test_setResourceSpecificFields(t *testing.T) {
 			want: listResourcesOutput{Ready: "2/3"},
 		},
 		{
+			name: "statefulset sets ready replicas",
+			item: func() unstructured.Unstructured {
+				u := unstructured.Unstructured{}
+				u.SetKind("StatefulSet")
+				_ = unstructured.SetNestedField(u.Object, int64(3), "spec", "replicas")
+				_ = unstructured.SetNestedField(u.Object, int64(3), "status", "readyReplicas")
+				return u
+			}(),
+			want: listResourcesOutput{Ready: "3/3"},
+		},
+		{
+			name: "daemonset sets ready replicas",
+			item: func() unstructured.Unstructured {
+				u := unstructured.Unstructured{}
+				u.SetKind("DaemonSet")
+				_ = unstructured.SetNestedField(u.Object, int64(5), "spec", "replicas")
+				_ = unstructured.SetNestedField(u.Object, int64(4), "status", "readyReplicas")
+				return u
+			}(),
+			want: listResourcesOutput{Ready: "4/5"},
+		},
+		{
 			name: "node sets IPs and ready status",
 			item: func() unstructured.Unstructured {
 				u := unstructured.Unstructured{}
