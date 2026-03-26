@@ -260,32 +260,21 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return "", err
 	}
 
-	var res *unstructured.Unstructured
+	var item *unstructured.Unstructured
 	if namespaced && namespace != "" {
-		res, err = c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		item, err = c.dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	} else {
-		res, err = c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+		item, err = c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 	}
 	if err != nil {
 		return "", err
 	}
 
-	// this reduces context (hence used tokens) a lot
-	unstructured.RemoveNestedField(res.Object, "metadata", "managedFields")
-
-	if res.GetKind() == "Secret" {
-		if data, ok, err := unstructured.NestedMap(res.Object, "data"); ok && err == nil {
-			secrets := make(map[string]interface{})
-			for key := range data {
-				secrets[key] = "*****"
-			}
-			err := unstructured.SetNestedMap(res.Object, secrets, "data")
-			if err != nil {
-				return "", err
-			}
-		}
+	if err = sanitize(item); err != nil {
+		return "", err
 	}
-	yamlBytes, err := yaml.Marshal(res.Object)
+
+	yamlBytes, err := yaml.Marshal(item.Object)
 	if err != nil {
 		return "", err
 	}
@@ -491,6 +480,75 @@ func (c *Client) TopNodes(ctx context.Context) (string, error) {
 		})
 	}
 	return serializeList(result, c.Header())
+}
+
+// sanitize removes or redacts fields before the object is serialized and returned.
+// It mutates the object in place.
+func sanitize(item *unstructured.Unstructured) error {
+	// Always strip managedFields — no diagnostic value, saves tokens.
+	unstructured.RemoveNestedField(item.Object, "metadata", "managedFields")
+
+	switch item.GetKind() {
+	case "Secret":
+		for _, field := range []string{"data", "stringData"} {
+			if raw, ok, err := unstructured.NestedFieldNoCopy(item.Object, field); ok && err == nil {
+				if m, ok := raw.(map[string]interface{}); ok {
+					redacted := make(map[string]interface{}, len(m))
+					for k := range m {
+						redacted[k] = "*****"
+					}
+					if err := unstructured.SetNestedMap(item.Object, redacted, field); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	case "CertificateSigningRequest":
+		if spec, ok, err := unstructured.NestedFieldNoCopy(item.Object, "spec"); ok && err == nil {
+			if specMap, ok := spec.(map[string]interface{}); ok {
+				if _, ok := specMap["request"]; ok {
+					if err := unstructured.SetNestedField(item.Object, "*****", "spec", "request"); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+	case "Certificate":
+		// spec.keystores is only present when the Certificate is configured to produce keystore output
+		// (JKS or PKCS12). Most certificates don't use it, so this is a no-op in most cases.
+		if spec, ok, err := unstructured.NestedFieldNoCopy(item.Object, "spec"); ok && err == nil {
+			if specMap, ok := spec.(map[string]interface{}); ok {
+				if _, ok := specMap["keystores"]; ok {
+					if err := unstructured.SetNestedField(item.Object, "*****", "spec", "keystores"); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		if conditions, ok, err := unstructured.NestedSlice(item.Object, "status", "conditions"); ok && err == nil {
+			redacted := false
+			for _, condition := range conditions {
+				if condMap, ok := condition.(map[string]interface{}); ok {
+					if message, ok := condMap["message"]; ok {
+						if messageStr, ok := message.(string); ok {
+							if strings.HasPrefix(messageStr, "-----BEGIN CERTIFICATE-----") {
+								condMap["message"] = "*****"
+								redacted = true
+							}
+						}
+					}
+				}
+			}
+			if redacted {
+				if err := unstructured.SetNestedSlice(item.Object, conditions, "status", "conditions"); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func serializeList[T any](list []T, header string) (string, error) {
