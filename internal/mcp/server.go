@@ -29,6 +29,8 @@ func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 		return nil, nil
 	}
 	switch request.Method {
+	case "ping":
+		return struct{}{}, nil
 	case "initialize":
 		return InitialisationResult{
 			ProtocolVersion: "2024-11-05",
@@ -65,8 +67,6 @@ func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 			}
 		}
 		return nil, &rpcError{-32603, fmt.Errorf("unknown tool: %s", p.Name)}
-	case "ping":
-		return struct{}{}, nil
 	}
 	return nil, &rpcError{-32601, fmt.Errorf("unknown method: %s", request.Method)}
 }
