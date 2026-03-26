@@ -289,11 +289,12 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return "", err
 	}
 
-	if err = sanitize(item); err != nil {
+	sanitized, err := sanitize(item)
+	if err != nil {
 		return "", err
 	}
 
-	yamlBytes, err := yaml.Marshal(item.Object)
+	yamlBytes, err := yaml.Marshal(sanitized.item.Object)
 	if err != nil {
 		return "", err
 	}
@@ -512,9 +513,17 @@ func (c *Client) TopNodes(ctx context.Context) (string, error) {
 	return serializeList(result, c.Header())
 }
 
+// sanitizedResource is an opaque wrapper produced only by sanitize.
+// Using it as the required input for serialisation makes it impossible to
+// accidentally marshal a raw Unstructured without going through sanitize first.
+type sanitizedResource struct {
+	item *unstructured.Unstructured
+}
+
 // sanitize removes or redacts fields before the object is serialized and returned.
-// It mutates the object in place.
-func sanitize(item *unstructured.Unstructured) error {
+// It mutates the object in place and returns a sanitizedResource to enforce at
+// compile time that callers cannot skip this step.
+func sanitize(item *unstructured.Unstructured) (sanitizedResource, error) {
 	// Always strip managedFields — no diagnostic value, saves tokens.
 	unstructured.RemoveNestedField(item.Object, "metadata", "managedFields")
 
@@ -528,7 +537,7 @@ func sanitize(item *unstructured.Unstructured) error {
 						redacted[k] = "*****"
 					}
 					if err := unstructured.SetNestedMap(item.Object, redacted, field); err != nil {
-						return err
+						return sanitizedResource{}, err
 					}
 				}
 			}
@@ -538,7 +547,7 @@ func sanitize(item *unstructured.Unstructured) error {
 			if specMap, ok := spec.(map[string]interface{}); ok {
 				if _, ok := specMap["request"]; ok {
 					if err := unstructured.SetNestedField(item.Object, "*****", "spec", "request"); err != nil {
-						return err
+						return sanitizedResource{}, err
 					}
 				}
 			}
@@ -551,7 +560,7 @@ func sanitize(item *unstructured.Unstructured) error {
 			if specMap, ok := spec.(map[string]interface{}); ok {
 				if _, ok := specMap["keystores"]; ok {
 					if err := unstructured.SetNestedField(item.Object, "*****", "spec", "keystores"); err != nil {
-						return err
+						return sanitizedResource{}, err
 					}
 				}
 			}
@@ -572,13 +581,13 @@ func sanitize(item *unstructured.Unstructured) error {
 			}
 			if redacted {
 				if err := unstructured.SetNestedSlice(item.Object, conditions, "status", "conditions"); err != nil {
-					return err
+					return sanitizedResource{}, err
 				}
 			}
 		}
 	}
 
-	return nil
+	return sanitizedResource{item: item}, nil
 }
 
 func serializeList[T any](list []T, header string) (string, error) {
