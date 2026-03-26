@@ -270,9 +270,6 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 		return "", err
 	}
 
-	// this reduces context (hence used tokens) a lot
-	unstructured.RemoveNestedField(item.Object, "metadata", "managedFields")
-
 	switch item.GetKind() {
 	case "Secret":
 		// mask secret to prevent leaking them
@@ -325,6 +322,8 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 			}
 		}
 	}
+	// this reduces context (hence used tokens) a lot
+	unstructured.RemoveNestedField(item.Object, "metadata", "managedFields")
 
 	yamlBytes, err := yaml.Marshal(item.Object)
 	if err != nil {
