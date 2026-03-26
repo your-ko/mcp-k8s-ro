@@ -336,6 +336,7 @@ func (c *Client) GetLogs(ctx context.Context, podName string, namespace string, 
 	return c.Header() + str, nil
 }
 
+// this map is a const, should not be mutated :)
 var skipGroups = map[string]bool{
 	"authentication.k8s.io":  true,
 	"authorization.k8s.io":   true,
