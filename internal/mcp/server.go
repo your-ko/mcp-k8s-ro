@@ -29,6 +29,8 @@ func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 		return nil, nil
 	}
 	switch request.Method {
+	case "ping":
+		return struct{}{}, nil
 	case "initialize":
 		return InitialisationResult{
 			ProtocolVersion: "2024-11-05",
