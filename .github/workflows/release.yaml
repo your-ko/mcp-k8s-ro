@@ -41,12 +41,11 @@ jobs:
           cache-dependency-path: './go.sum'
 
       - name: Go Test
-        if: matrix.os == 'linux' && matrix.arch == 'amd64'
         shell: bash
         env:
-          CGO_ENABLED: 1
+          CGO_ENABLED: 0
         run: |
-          go test -race ./cmd/... ./internal/...
+          go test ./cmd/... ./internal/...
 
       - name: Generate build timestamp
         id: timestamp
