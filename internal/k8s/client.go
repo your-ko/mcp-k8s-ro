@@ -504,10 +504,12 @@ func sanitize(item *unstructured.Unstructured) error {
 			}
 		}
 	case "CertificateSigningRequest":
-		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
-			if _, ok := spec["request"]; ok {
-				if err := unstructured.SetNestedField(item.Object, "*****", "spec", "request"); err != nil {
-					return err
+		if spec, ok, err := unstructured.NestedFieldNoCopy(item.Object, "spec"); ok && err == nil {
+			if specMap, ok := spec.(map[string]interface{}); ok {
+				if _, ok := specMap["request"]; ok {
+					if err := unstructured.SetNestedField(item.Object, "*****", "spec", "request"); err != nil {
+						return err
+					}
 				}
 			}
 		}
