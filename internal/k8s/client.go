@@ -513,11 +513,12 @@ func sanitize(item *unstructured.Unstructured) error {
 		}
 
 	case "Certificate":
-		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
-			if _, ok := spec["keystores"]; ok {
-				spec["keystores"] = "*****"
-				if err := unstructured.SetNestedMap(item.Object, spec, "spec"); err != nil {
-					return err
+		if spec, ok, err := unstructured.NestedFieldNoCopy(item.Object, "spec"); ok && err == nil {
+			if specMap, ok := spec.(map[string]interface{}); ok {
+				if _, ok := specMap["keystores"]; ok {
+					if err := unstructured.SetNestedField(item.Object, "*****", "spec", "keystores"); err != nil {
+						return err
+					}
 				}
 			}
 		}
