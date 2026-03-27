@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -160,12 +161,13 @@ func TestClient_GetResource(t *testing.T) {
 		namespace string
 	}
 	tests := []struct {
-		name         string
-		args         args
-		setupMapper  func(*mockrestMapper)
-		setupDyn     func(*mockdynamicClient)
-		wantContains []string
-		wantErr      error
+		name            string
+		args            args
+		setupMapper     func(*mockrestMapper)
+		setupDyn        func(*mockdynamicClient)
+		wantContains    []string
+		wantNotContains []string
+		wantErr         error
 	}{
 		{
 			name: "get pod returns yaml with name and header",
@@ -183,10 +185,12 @@ func TestClient_GetResource(t *testing.T) {
 				item.SetName("my-pod")
 				item.SetNamespace("default")
 				item.SetKind("Pod")
+				item.SetManagedFields([]v1.ManagedFieldsEntry{{Manager: "kubectl"}})
 				gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 				m.EXPECT().Resource(gvr).Return(&fakeResourceClient{item: &item})
 			},
-			wantContains: []string{"my-pod", "test-context", "test-cluster"},
+			wantContains:    []string{"my-pod", "test-context", "test-cluster"},
+			wantNotContains: []string{"managedFields"},
 		},
 		{
 			name: "get secret masks data values",
@@ -246,6 +250,11 @@ func TestClient_GetResource(t *testing.T) {
 				for _, s := range tt.wantContains {
 					if !strings.Contains(result, s) {
 						t.Errorf("expected result to contain %q, got:\n%s", s, result)
+					}
+				}
+				for _, s := range tt.wantNotContains {
+					if strings.Contains(result, s) {
+						t.Errorf("expected result NOT to contain %q, got:\n%s", s, result)
 					}
 				}
 				return
