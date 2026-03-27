@@ -180,6 +180,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.version }}
         run: |
+          git tag -f "$TAG"
+          git push origin -f "refs/tags/$TAG"
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --generate-notes --latest
           else
