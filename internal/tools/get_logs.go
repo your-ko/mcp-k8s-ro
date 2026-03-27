@@ -56,5 +56,12 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	return tool.client.GetLogs(ctx, p.Name, p.Namespace, p.TailLines, p.Previous, p.Container)
+	result, err := tool.client.GetLogs(ctx, p.Name, p.Namespace, p.TailLines, p.Previous, p.Container)
+	if err != nil {
+		return "", &mcp.ToolError{
+			Op:  "can't get logs",
+			Err: err,
+		}
+	}
+	return result, nil
 }

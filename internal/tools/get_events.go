@@ -48,5 +48,12 @@ func (tool EventGetter) Execute(params json.RawMessage) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return tool.client.GetEvents(ctx, p.Namespace, p.Limit)
+	result, err := tool.client.GetEvents(ctx, p.Namespace, p.Limit)
+	if err != nil {
+		return "", &mcp.ToolError{
+			Op:  "can't get events",
+			Err: err,
+		}
+	}
+	return result, nil
 }

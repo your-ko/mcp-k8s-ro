@@ -3,8 +3,10 @@ package mcp
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 )
 
 type Server struct {
@@ -107,9 +109,14 @@ func handleError(output io.Writer, requestId any, errorCode int, err error) {
 		JSONRPC: "2.0",
 		ID:      requestId,
 		Error: &JSONRPCError{
-			Code:    errorCode,
-			Message: err.Error(),
+			Code: errorCode,
 		}}
+	if toolError, ok := errors.AsType[*ToolError](err); ok {
+		slog.Error("tool call failed", "error", toolError.Err)
+		response.Error.Message = toolError.Op
+	} else {
+		response.Error.Message = err.Error()
+	}
 	_ = json.NewEncoder(output).Encode(response)
 }
 
