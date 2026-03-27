@@ -37,7 +37,7 @@ func (tool LogGetter) InputSchema() mcp.InputSchema {
              "previous": {"type":"boolean","description":"Show logs from a crashed/restarted container (kubectl logs --previous). Useful for debugging crashloops."},
              "tailLines": {"type":"integer","description":"Number of lines to tail. 0 or none is to fetch everything"}
          }`),
-		Required: []string{"name"},
+		Required: []string{"name", "namespace"},
 	}
 }
 
