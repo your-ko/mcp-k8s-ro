@@ -144,8 +144,8 @@ func setResourceSpecificFields(item unstructured.Unstructured, res *listResource
 	case "Service":
 		if spec, ok, err := unstructured.NestedMap(item.Object, "spec"); ok && err == nil {
 			if itemType, ok := spec["type"]; ok {
-				if _, ok := itemType.(string); ok {
-					res.Type = itemType.(string)
+				if itemTypeStr, ok := itemType.(string); ok {
+					res.Type = itemTypeStr
 				}
 			}
 			if clusterIp, ok := spec["clusterIP"]; ok {
