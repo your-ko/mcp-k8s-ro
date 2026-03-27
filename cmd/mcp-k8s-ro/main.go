@@ -23,24 +23,27 @@ func main() {
 	updateMetadata()
 	slog.Info("Starting", "Version", Version, "BuildDate", BuildDate, "GitCommit", GitCommit)
 
-	config, err := getConfig()
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
+
+	config, err := clientConfig.ClientConfig()
 	if err != nil {
-		slog.Error("failed to read kubeconfig", "error", err)
+		slog.Error("failed to build rest config", "error", err)
 		os.Exit(1)
 	}
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	apiConfig, err := rules.Load()
+	apiConfig, err := clientConfig.RawConfig()
 	if err != nil {
 		slog.Error("failed to load kubeconfig", "error", err)
 		os.Exit(1)
 	}
+
 	contextName := apiConfig.CurrentContext
-	ctx, ok := apiConfig.Contexts[contextName]
+	k8sCtx, ok := apiConfig.Contexts[contextName]
 	if !ok {
 		slog.Error("current context not found in kubeconfig", "context", contextName)
 		os.Exit(1)
 	}
-	clusterName := ctx.Cluster
+	clusterName := k8sCtx.Cluster
 
 	k8sClient, err := k8s.NewClient(config, contextName, clusterName)
 	if err != nil {
