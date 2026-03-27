@@ -110,3 +110,5 @@ type ToolError struct {
 func (e *ToolError) Error() string {
 	return fmt.Sprintf("kubernetes API error during %s", e.Op)
 }
+
+func (e *ToolError) Unwrap() error { return e.Err }

@@ -51,7 +51,7 @@ func (tool EventGetter) Execute(params json.RawMessage) (string, error) {
 	result, err := tool.client.GetEvents(ctx, p.Namespace, p.Limit)
 	if err != nil {
 		return "", &mcp.ToolError{
-			Op:  "Error: can't get events",
+			Op:  "can't get events",
 			Err: err,
 		}
 	}

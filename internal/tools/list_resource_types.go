@@ -45,7 +45,7 @@ func (tool ListResourceTypes) Execute(params json.RawMessage) (string, error) {
 	result, err := tool.client.ListApiResources(p.ApiGroup)
 	if err != nil {
 		return "", &mcp.ToolError{
-			Op:  "Error: can't list resource types",
+			Op:  "can't list resource types",
 			Err: err,
 		}
 	}

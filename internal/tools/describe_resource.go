@@ -54,7 +54,7 @@ func (tool DescribeResource) Execute(params json.RawMessage) (string, error) {
 	result, err := tool.client.GetResource(ctx, p.Name, p.Resource, p.Namespace)
 	if err != nil {
 		return "", &mcp.ToolError{
-			Op:  "Error: can't describe resources",
+			Op:  "can't describe resources",
 			Err: err,
 		}
 	}

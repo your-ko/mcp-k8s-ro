@@ -59,7 +59,7 @@ func (tool LogGetter) Execute(params json.RawMessage) (string, error) {
 	result, err := tool.client.GetLogs(ctx, p.Name, p.Namespace, p.TailLines, p.Previous, p.Container)
 	if err != nil {
 		return "", &mcp.ToolError{
-			Op:  "Error: can't get logs",
+			Op:  "can't get logs",
 			Err: err,
 		}
 	}

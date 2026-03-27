@@ -51,7 +51,7 @@ func (tool PodTopper) Execute(params json.RawMessage) (string, error) {
 	result, err := tool.client.TopPods(ctx, p.Namespace)
 	if err != nil {
 		return "", &mcp.ToolError{
-			Op:  "Error: can't top pods",
+			Op:  "can't top pods",
 			Err: err,
 		}
 	}

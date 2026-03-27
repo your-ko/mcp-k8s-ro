@@ -112,7 +112,7 @@ func handleError(output io.Writer, requestId any, errorCode int, err error) {
 			Code: errorCode,
 		}}
 	if toolError, ok := errors.AsType[*ToolError](err); ok {
-		slog.Error("", "error", err)
+		slog.Error("tool call failed", "error", toolError.Err)
 		response.Error.Message = toolError.Op
 	} else {
 		response.Error.Message = err.Error()

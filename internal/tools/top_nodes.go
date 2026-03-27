@@ -41,7 +41,7 @@ func (tool NodeTopper) Execute(_ json.RawMessage) (string, error) {
 	result, err := tool.client.TopNodes(ctx)
 	if err != nil {
 		return "", &mcp.ToolError{
-			Op:  "Error: can't top nodes",
+			Op:  "can't top nodes",
 			Err: err,
 		}
 	}

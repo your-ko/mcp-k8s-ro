@@ -65,7 +65,7 @@ func (tool ListResources) Execute(params json.RawMessage) (string, error) {
 	result, err := tool.client.ListResources(ctx, p.Resource, p.Namespace)
 	if err != nil {
 		return "", &mcp.ToolError{
-			Op:  "Error: can't list resources",
+			Op:  "can't list resources",
 			Err: err,
 		}
 	}
