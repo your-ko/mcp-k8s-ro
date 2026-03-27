@@ -48,5 +48,12 @@ func (tool PodTopper) Execute(params json.RawMessage) (string, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return tool.client.TopPods(ctx, p.Namespace)
+	result, err := tool.client.TopPods(ctx, p.Namespace)
+	if err != nil {
+		return "", &mcp.ToolError{
+			Op:  "Error: can't top pods",
+			Err: err,
+		}
+	}
+	return result, nil
 }

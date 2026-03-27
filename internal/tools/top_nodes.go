@@ -38,5 +38,12 @@ func (tool NodeTopper) InputSchema() mcp.InputSchema {
 func (tool NodeTopper) Execute(_ json.RawMessage) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return tool.client.TopNodes(ctx)
+	result, err := tool.client.TopNodes(ctx)
+	if err != nil {
+		return "", &mcp.ToolError{
+			Op:  "Error: can't top nodes",
+			Err: err,
+		}
+	}
+	return result, nil
 }

@@ -51,5 +51,12 @@ func (tool DescribeResource) Execute(params json.RawMessage) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return tool.client.GetResource(ctx, p.Name, p.Resource, p.Namespace)
+	result, err := tool.client.GetResource(ctx, p.Name, p.Resource, p.Namespace)
+	if err != nil {
+		return "", &mcp.ToolError{
+			Op:  "Error: can't describe resources",
+			Err: err,
+		}
+	}
+	return result, nil
 }

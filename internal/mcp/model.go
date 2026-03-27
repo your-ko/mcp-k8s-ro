@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // Tool is implemented by every k8s tool registered with the MCP server.
@@ -100,3 +101,12 @@ type rpcError struct {
 }
 
 func (e *rpcError) Error() string { return e.err.Error() }
+
+type ToolError struct {
+	Op  string // "list pods", "get logs", etc.
+	Err error  // original, logged to stderr only
+}
+
+func (e *ToolError) Error() string {
+	return fmt.Sprintf("kubernetes API error during %s", e.Op)
+}
