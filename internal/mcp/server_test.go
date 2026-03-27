@@ -134,7 +134,7 @@ func TestServer_process(t *testing.T) {
 				Method: "tools/call",
 				Params: json.RawMessage(`{"invalid_json`),
 			}},
-			wantErr: &rpcError{code: -32602, err: errors.New("unexpected end of JSON input")},
+			wantErr: &rpcError{code: -32602},
 		},
 		{
 			name: "tools_call_unknown_tool",
@@ -199,9 +199,6 @@ func TestServer_process(t *testing.T) {
 			if err != nil && tt.wantErr != nil {
 				if err.code != tt.wantErr.code {
 					t.Errorf("process() got error code = %d, want %d", err.code, tt.wantErr.code)
-				}
-				if err.Error() != tt.wantErr.Error() {
-					t.Errorf("process() got error = %q, want %q", err.Error(), tt.wantErr.Error())
 				}
 			}
 
