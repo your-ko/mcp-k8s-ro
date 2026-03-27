@@ -9,7 +9,7 @@ permissions:
 env:
   DOCKER_VALIDATOR: ghcr.io/your-ko/link-validator
   # renovate: datasource=github-releases depName=your-ko/link-validator versioning=semver
-  DOCKER_VALIDATOR_VERSION: 2.3.1
+  DOCKER_VALIDATOR_VERSION: 2.3.2
 jobs:
   link-validator:
     name: link-validator
