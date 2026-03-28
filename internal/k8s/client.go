@@ -104,7 +104,14 @@ func (c *Client) ListResources(ctx context.Context, resource, namespace string) 
 	if err != nil {
 		return "", err
 	}
-	return serializeList(normaliseList(list), c.Header())
+	result, err := serializeList(normaliseList(list), c.Header())
+	if err != nil {
+		return "", err
+	}
+	if !namespaced && namespace != "" {
+		result = fmt.Sprintf("# warning: %q is a cluster-scoped resource; namespace %q was ignored\n", resource, namespace) + result
+	}
+	return result, nil
 }
 
 // Header generates header with cluster info to be added to all responses
@@ -298,7 +305,11 @@ func (c *Client) GetResource(ctx context.Context, name string, resource string, 
 	if err != nil {
 		return "", err
 	}
-	return c.Header() + string(yamlBytes), nil
+	result := c.Header() + string(yamlBytes)
+	if !namespaced && namespace != "" {
+		result = fmt.Sprintf("# warning: %q is a cluster-scoped resource; namespace %q was ignored\n", resource, namespace) + result
+	}
+	return result, nil
 }
 
 // GetLogs fetches pod logs.
