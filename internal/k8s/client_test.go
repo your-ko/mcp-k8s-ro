@@ -72,6 +72,22 @@ func TestClient_ListResources(t *testing.T) {
 			wantContains: []string{"my-node", "test-context", "test-cluster"},
 		},
 		{
+			name: "cluster-scoped resource with namespace emits warning",
+			args: args{resource: "nodes", namespace: "kube-system"},
+			setupMapper: func(m *mockrestMapper) {
+				m.EXPECT().ResourceFor(schema.GroupVersionResource{Resource: "nodes"}).Return(nodesGVR, nil)
+				m.EXPECT().KindsFor(nodesGVR).Return([]schema.GroupVersionKind{nodeGVK}, nil)
+				m.EXPECT().RESTMapping(nodeGVK.GroupKind(), mock.Anything).
+					Return(restMappingFor(nodeGVK, clusterScope{}), nil)
+			},
+			setupDyn: func(m *mockdynamicClient) {
+				m.EXPECT().Resource(nodesGVR).Return(&fakeResourceClient{
+					list: &unstructured.UnstructuredList{Items: []unstructured.Unstructured{nodeItem}},
+				})
+			},
+			wantContains: []string{"my-node", "warning", "nodes", "kube-system"},
+		},
+		{
 			name: "namespaced resource with no namespace falls back to cluster-wide list",
 			args: args{resource: "pods", namespace: ""},
 			setupMapper: func(m *mockrestMapper) {
@@ -214,6 +230,26 @@ func TestClient_GetResource(t *testing.T) {
 				m.EXPECT().Resource(gvr).Return(&fakeResourceClient{item: &item})
 			},
 			wantContains: []string{"my-secret", "*****"},
+		},
+		{
+			name: "cluster-scoped resource with namespace emits warning",
+			args: args{name: "my-node", resource: "nodes", namespace: "kube-system"},
+			setupMapper: func(m *mockrestMapper) {
+				gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "nodes"}
+				gvk := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Node"}
+				m.EXPECT().ResourceFor(schema.GroupVersionResource{Resource: "nodes"}).Return(gvr, nil)
+				m.EXPECT().KindsFor(gvr).Return([]schema.GroupVersionKind{gvk}, nil)
+				m.EXPECT().RESTMapping(gvk.GroupKind(), mock.Anything).
+					Return(restMappingFor(gvk, clusterScope{}), nil)
+			},
+			setupDyn: func(m *mockdynamicClient) {
+				item := unstructured.Unstructured{}
+				item.SetName("my-node")
+				item.SetKind("Node")
+				gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "nodes"}
+				m.EXPECT().Resource(gvr).Return(&fakeResourceClient{item: &item})
+			},
+			wantContains: []string{"my-node", "warning", "nodes", "kube-system"},
 		},
 		{
 			name: "resolveGVR returns error",
