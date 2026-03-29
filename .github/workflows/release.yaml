@@ -106,9 +106,9 @@ jobs:
             type=raw,value=${{ inputs.version }}
             type=raw,value=latest
             type=sha,prefix=sha256-,format=long
-#            org.opencontainers.image.licenses=MIT
           labels: |
             org.opencontainers.image.title=mcp-k8s-ro
+            org.opencontainers.image.licenses=MIT
             org.opencontainers.image.description=Read-only MCP server for Kubernetes
             org.opencontainers.image.url=https://github.com/your-ko/mcp-k8s-ro
             org.opencontainers.image.source=https://github.com/your-ko/mcp-k8s-ro
@@ -130,38 +130,38 @@ jobs:
             VERSION=${{ inputs.version }}
             BUILD_DATE=${{ steps.timestamp.outputs.BUILD_DATE }}
             GIT_COMMIT=${{ github.sha }}
-#          provenance: mode=max   # requires public repo or GitHub Advanced Security
-#          sbom: true             # requires public repo or GitHub Advanced Security
+          provenance: mode=max   # requires public repo or GitHub Advanced Security
+          sbom: true             # requires public repo or GitHub Advanced Security
           push: true
 
-#  sign:
-#    # Cosign keyless signing uses Sigstore public Rekor log — requires public repo
-#    runs-on: ubuntu-24.04
-#    needs: build-docker
-#    steps:
-#      - name: Login to GHCR
-#        uses: docker/login-action@v3.7.0
-#        with:
-#          registry: ghcr.io
-#          username: ${{ github.actor }}
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: Install cosign
-#        uses: sigstore/cosign-installer@v4.1.0
-#
-#      - name: Keyless sign image (Sigstore)
-#        env:
-#          DIGEST: ${{ needs.build-docker.outputs.digest }}
-#        run: |
-#          cosign sign --yes ${{ env.DOCKER_IMAGE_NAME }}@${{env.DIGEST}}
-#
-#      - name: Verify signature
-#        env:
-#          DIGEST: ${{ needs.build-docker.outputs.digest }}
-#        run: |
-#          cosign verify "${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}" \
-#            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-#            --certificate-identity-regexp "^https://github.com/your-ko/mcp-k8s-ro/\.github/workflows/.*"
+  sign:
+    # Cosign keyless signing uses Sigstore public Rekor log — requires public repo
+    runs-on: ubuntu-24.04
+    needs: build-docker
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Keyless sign image (Sigstore)
+        env:
+          DIGEST: ${{ needs.build-docker.outputs.digest }}
+        run: |
+          cosign sign --yes ${{ env.DOCKER_IMAGE_NAME }}@${{env.DIGEST}}
+
+      - name: Verify signature
+        env:
+          DIGEST: ${{ needs.build-docker.outputs.digest }}
+        run: |
+          cosign verify "${{env.DOCKER_IMAGE_NAME}}@${{env.DIGEST}}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "^https://github.com/your-ko/mcp-k8s-ro/\.github/workflows/.*"
 
   release:
     runs-on: ubuntu-24.04
