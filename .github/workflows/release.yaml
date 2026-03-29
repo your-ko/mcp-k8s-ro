@@ -11,8 +11,8 @@ on:
 permissions:
   packages: write           # Required for push to GHCR
   contents: write           # Required to create a release and upload artifacts
-#  attestations: write       # Required for Docker image attestation (public repos only)
-#  id-token: write           # OIDC for cosign keyless + attestations (public repos only)
+  attestations: write       # Required for Docker image attestation (public repos only)
+  id-token: write           # OIDC for cosign keyless + attestations (public repos only)
 
 env:
   DOCKER_IMAGE_NAME: ghcr.io/your-ko/mcp-k8s-ro
