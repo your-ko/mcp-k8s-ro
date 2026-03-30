@@ -5,31 +5,25 @@
 
 A read-only MCP server that gives Claude access to Kubernetes clusters. Built in Go, communicates over stdio using the MCP protocol.
 
-## Why
+## Design
 
-- **Safe by design** — read-only, so Claude can never accidentally mutate your cluster.
-- **Token-efficient** — responses include only relevant fields (name, status, restarts, etc.) rather than raw Kubernetes API objects, which saves significant context space.
-- **Cluster-aware** — every response includes the active context and cluster name, so Claude always knows which cluster it's looking at.
-- **Secret-safe** — secret values are masked before being sent to the model.
-- **No extra infra** — runs as a local binary or Docker container, connects to whatever kubeconfig context is active at startup.
-
-## Constraints
-
+- **Read-only** — only `get`, `describe`, `logs`, and `top` style operations. No create, update, or delete. If a mutating operation is needed, the server prints the equivalent `kubectl` command for you to run manually. Safe to use while on-call at night: Claude can never accidentally mutate your cluster, even under prompt fatigue.
+- **Secret-safe** — secret values are masked before being sent to the model, so your secrets cannot leak due to misconfiguration or prompt injection.
+- **Token-efficient** — responses include only relevant fields (name, status, restarts, etc.) rather than raw Kubernetes API objects, keeping context usage low.
+- **Cluster-aware** — every response includes the active context and cluster name, so Claude always knows which cluster it is talking to.
 - **Context-pinned** — the server locks to the active kubeconfig context at startup. Switching contexts in another terminal has no effect on the running server.
-- **Read-only** — only `get`, `describe`, `logs`, and `top` style operations. No create, update, or delete.
-- **Mutation suggestions** — if a mutating operation is needed, the server prints the equivalent `kubectl` command for the user to run manually.
-- **Secret masking** — secret values are redacted by default.
+- **No extra infra** — runs as a local binary or Docker container, connects to whatever kubeconfig context is active at startup.
 
 ## Redacted fields
 
-| Object/Field                                           | Reason                                                  | 
-|--------------------------------------------------------|---------------------------------------------------------|
-| Secret.data                                            | Security reasons: Secrets leak prevention               |
-| Secret.stringData                                      | Security reasons: Secrets leak prevention               |
-| CertificateSigningRequest.spec.request                 | Large base64 PEM blob, no diagnostic value, save tokens |
-| Certificate (cert-manager) .spec.keystores             | Cert chain PEM blobs, no diagnostic value, save tokens  |
-| Certificate (cert-manager) status.conditions[].message | Cert chain PEM blobs, no diagnostic value, save tokens  |
-| *.managedFields                                        | No diagnostic value, save tokens                        |
+| Object/Field                                           | Reason                                                   | 
+|--------------------------------------------------------|----------------------------------------------------------|
+| Secret.data                                            | Secret leak prevention                                   |
+| Secret.stringData                                      | Secret leak prevention                                   |
+| CertificateSigningRequest.spec.request                 | Large base64 PEM blob, no diagnostic value, saves tokens |
+| Certificate (cert-manager) .spec.keystores             | Cert chain PEM blobs, no diagnostic value, saves tokens  |
+| Certificate (cert-manager) status.conditions[].message | Cert chain PEM blobs, no diagnostic value, saves tokens  |
+| *.managedFields                                        | No diagnostic value, saves tokens                        |
 
 
 ## Tools
@@ -74,15 +68,19 @@ make build
   }
 }
 ```
-or execute `claude mcp add --transport stdio --scope user mcp-k8s-ro [path to binary]`
-### Docker
-
-Pull the image from GitHub Container Registry:
+Or via the CLI:
 
 ```bash
-docker pull ghcr.io/your-ko/mcp-k8s-ro:latest 
+claude mcp add --transport stdio --scope user mcp-k8s-ro [path to binary]
 ```
-or pin a particular version (recommended)
+
+### Docker
+
+Pull the image from GitHub Container Registry (pinning a specific version is recommended):
+
+```bash
+docker pull ghcr.io/your-ko/mcp-k8s-ro:latest
+```
 
 Add it to your Claude Desktop or `claude` CLI configuration. The kubeconfig directory is mounted read-only into the container:
 
@@ -119,19 +117,12 @@ If your kubeconfig is in a non-standard location, pass it via `KUBECONFIG`:
 }
 ```
 
-The server locks to the current kubeconfig context at startup.
-The active context and cluster name are included in every tool response so you always know which
-cluster Claude is talking to.
-
 ## Single-cluster design
 
-The server intentionally operates on one kubeconfig context and provides no tool to switch clusters
-at runtime. The reasons are:
+The server intentionally operates on one kubeconfig context and provides no tool to switch clusters at runtime. The reasons are:
 
-- **Prompt injection isolation** — a malicious value in one cluster's resources (e.g. a pod
-  annotation) cannot instruct Claude to pivot to a different cluster, including production.
-- **Explicit audit boundary** — every tool response includes the context and cluster name, so
-  there is never ambiguity about which cluster was queried.
+- **Prompt injection isolation** — a malicious value in one cluster's resources (e.g. a pod annotation) cannot instruct Claude to pivot to a different cluster, including production.
+- **Explicit audit boundary** — every tool response includes the context and cluster name, so there is never ambiguity about which cluster was queried.
 
 **To point the server at a different cluster**, stop the server, switch context, and restart:
 
@@ -140,8 +131,7 @@ kubectl config use-context my-other-cluster
 # then restart the MCP server / reload Claude Desktop
 ```
 
-**To work with multiple clusters simultaneously**, register a separate server instance per cluster
-in your MCP config:
+**To work with multiple clusters simultaneously**, register a separate server instance per cluster in your MCP config:
 
 ```json
 {
