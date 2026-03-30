@@ -224,7 +224,7 @@ jobs:
 
   publish-mcp:
     runs-on: ubuntu-24.04
-    needs: [ build-docker ]
+    needs: [ release ]
     permissions:
       id-token: write # Required for OIDC authentication
       contents: read
