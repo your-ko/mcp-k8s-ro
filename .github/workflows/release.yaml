@@ -221,3 +221,30 @@ jobs:
 
           find artifacts/ -name "*.zip" | xargs gh release upload "$TAG" --clobber
           gh release upload "$TAG" checksums/checksums.txt checksums/checksums.txt.bundle --clobber
+
+  publish-mcp:
+    runs-on: ubuntu-24.04
+    needs: [ build-docker ]
+    permissions:
+      id-token: write # Required for OIDC authentication
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Set version in server.json
+        run: |
+          VERSION=${{ inputs.version }}
+          jq --arg v "$VERSION" \
+            '.version = $v | .packages[0].identifier = ("ghcr.io/your-ko/mcp-k8s-ro:" + $v)' \
+            server.json > server.tmp && mv server.tmp server.json
+
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        run: ./mcp-publisher publish
