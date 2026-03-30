@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.your-ko/mcp-k8s-ro",
+  "description": "Read-only Kubernetes MCP server: inspect resources, logs, events, and metrics. Secrets are masked.",
+  "repository": {
+    "url": "https://github.com/your-ko/mcp-k8s-ro",
+    "source": "github"
+  },
+  "version": "1.0.1",
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/your-ko/mcp-k8s-ro:1.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "KUBECONFIG",
+          "description": "Path to the kubeconfig file. Defaults to ~/.kube/config.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
