@@ -41,9 +41,8 @@ func NewClient(config *rest.Config, contextName string, clusterName string) (*Cl
 	if err != nil {
 		return nil, err
 	}
-	discoveryConfig := *config
-	discoveryConfig.Timeout = time.Second * 10
-	disc, err := discovery.NewDiscoveryClientForConfig(&discoveryConfig)
+	config.Timeout = time.Second * 10
+	disc, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {
 		return nil, err
 	}
