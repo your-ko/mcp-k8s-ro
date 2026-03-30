@@ -150,4 +150,7 @@ kubectl config use-context my-other-cluster
 }
 ```
 
-Claude will address each server by name and each instance only ever sees its own cluster.
+Claude will address each [.claude.json](../../.claude.json)server by name and each instance only ever sees its own cluster.
+
+## MCP registry
+This server is published on [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io/?q=mcp-k8s-ro)
