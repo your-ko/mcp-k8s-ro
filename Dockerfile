@@ -18,6 +18,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 
 FROM gcr.io/distroless/static:nonroot
 
+LABEL io.modelcontextprotocol.server.name="io.github.your-ko/mcp-k8s-ro"
+
 COPY --from=builder /app/bin/mcp-k8s-ro /mcp-k8s-ro
 
 # KUBECONFIG env var can be set to point to a mounted kubeconfig file.
