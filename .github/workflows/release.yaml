@@ -71,7 +71,7 @@ jobs:
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: mcp-k8s-ro-${{ matrix.os }}-${{ matrix.arch }}
           path: mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.zip
@@ -119,7 +119,7 @@ jobs:
 
       - name: Build image
         id: docker
-        uses: docker/build-push-action@v7.0.0
+        uses: docker/build-push-action@v7.1.0
         with:
           context: .
           file: Dockerfile
@@ -179,7 +179,7 @@ jobs:
             --bundle checksums.txt.bundle
 
       - name: Upload checksum artifacts
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: checksums
           path: |
