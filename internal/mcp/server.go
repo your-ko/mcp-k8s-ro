@@ -74,15 +74,30 @@ func (s *Server) process(request JSONRPCRequest) (any, *rpcError) {
 }
 
 func (s *Server) Start(input io.Reader, output io.Writer) {
-	scanner := bufio.NewScanner(input)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // A large tools/call payload will silently fail with token too long.
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	reader := bufio.NewReaderSize(input, 1024*1024)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err == io.EOF {
+			return
+		}
+		if errors.Is(err, bufio.ErrBufferFull) {
+			slog.Error("request exceeds maximum size, discarding")
+			for errors.Is(err, bufio.ErrBufferFull) {
+				_, err = reader.ReadBytes('\n')
+			}
+			handleError(output, nil, -32700, fmt.Errorf("request exceeds maximum size"))
+			if err == io.EOF {
+				return
+			}
+			continue
+		}
+		if err != nil {
+			return
+		}
 
 		request := JSONRPCRequest{}
-		err := json.Unmarshal(line, &request)
-		if err != nil {
-			handleError(output, request.ID, -32700, err)
+		if unmarshalErr := json.Unmarshal(line, &request); unmarshalErr != nil {
+			handleError(output, request.ID, -32700, unmarshalErr)
 			continue
 		}
 		result, rpcErr := s.process(request)
