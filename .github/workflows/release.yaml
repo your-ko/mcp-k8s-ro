@@ -232,9 +232,26 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
       - name: Install mcp-publisher
+        env:
+          # renovate: datasource=github-releases depName=modelcontextprotocol/registry
+          MCP_PUBLISHER_VERSION: v1.7.9
         run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          TARBALL="mcp-publisher_${OS}_${ARCH}.tar.gz"
+          BASE="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl -fsSL "${BASE}/${TARBALL}" -o "${TARBALL}"
+          curl -fsSL "${BASE}/${TARBALL}.sigstore.json" -o "${TARBALL}.sigstore.json"
+          cosign verify-blob \
+            --bundle "${TARBALL}.sigstore.json" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "^https://github.com/modelcontextprotocol/registry/.github/workflows/.*" \
+            "${TARBALL}"
+          tar xzf "${TARBALL}" mcp-publisher
 
       - name: Set version in server.json
         run: |
