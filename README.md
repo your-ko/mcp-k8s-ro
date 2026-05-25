@@ -3,7 +3,7 @@
 [![Link validation](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/link-validator.yaml/badge.svg)](https://github.com/your-ko/mcp-k8s-ro/actions/workflows/link-validator.yaml)
 # mcp-k8s-ro
 
-A read-only MCP server that gives Claude access to Kubernetes clusters. Built in Go, communicates over stdio using the MCP protocol.
+A read-only MCP server that gives Claude access to Kubernetes clusters. Built in Go, it communicates over stdio using the MCP protocol.
 
 ## Design
 
@@ -150,7 +150,7 @@ kubectl config use-context my-other-cluster
 }
 ```
 
-Claude will address each [.claude.json](../../.claude.json)server by name and each instance only ever sees its own cluster.
+Claude will address each server by name and each instance only ever sees its own cluster.
 
 ## MCP registry
 This server is published on [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io/?q=mcp-k8s-ro)
