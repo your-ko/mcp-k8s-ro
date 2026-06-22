@@ -1,7 +1,7 @@
 BINARY := mcp-k8s-ro
 MODULE := github.com/your-ko/mcp-k8s-ro
 # renovate: datasource=github-releases depName=vektra/mockery versioning=semver
-MOCKERY_VERSION=v3.7.0
+MOCKERY_VERSION=v3.7.1
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
