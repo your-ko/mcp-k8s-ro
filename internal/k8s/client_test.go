@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -26,6 +27,14 @@ func TestClient_ListResources(t *testing.T) {
 	nodeItem := unstructured.Unstructured{}
 	nodeItem.SetName("my-node")
 	nodeItem.SetKind("Node")
+
+	nodeWithLabels := unstructured.Unstructured{}
+	nodeWithLabels.SetName("labeled-node")
+	nodeWithLabels.SetKind("Node")
+	nodeWithLabels.SetLabels(map[string]string{
+		"kubernetes.io/os":                 "linux",
+		"node.kubernetes.io/instance-type": "m5.large",
+	})
 
 	type args struct {
 		resource  string
@@ -102,6 +111,22 @@ func TestClient_ListResources(t *testing.T) {
 				})
 			},
 			wantContains: []string{"test-context", "test-cluster"},
+		},
+		{
+			name: "list nodes includes labels",
+			args: args{resource: "nodes", namespace: ""},
+			setupMapper: func(m *mockrestMapper) {
+				m.EXPECT().ResourceFor(schema.GroupVersionResource{Resource: "nodes"}).Return(nodesGVR, nil)
+				m.EXPECT().KindsFor(nodesGVR).Return([]schema.GroupVersionKind{nodeGVK}, nil)
+				m.EXPECT().RESTMapping(nodeGVK.GroupKind(), mock.Anything).
+					Return(restMappingFor(nodeGVK, clusterScope{}), nil)
+			},
+			setupDyn: func(m *mockdynamicClient) {
+				m.EXPECT().Resource(nodesGVR).Return(&fakeResourceClient{
+					list: &unstructured.UnstructuredList{Items: []unstructured.Unstructured{nodeWithLabels}},
+				})
+			},
+			wantContains: []string{"labeled-node", "kubernetes.io/os", "linux", "node.kubernetes.io/instance-type", "m5.large"},
 		},
 		{
 			name: "resolveGVR returns error",
@@ -483,7 +508,7 @@ func Test_setResourceSpecificFields(t *testing.T) {
 			got := listResourcesOutput{}
 			setResourceSpecificFields(tt.item, &got)
 
-			if got != tt.want {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("setResourceSpecificFields() =\n%+v\nwant\n%+v", got, tt.want)
 			}
 		})
