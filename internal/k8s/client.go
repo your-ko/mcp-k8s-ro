@@ -133,6 +133,7 @@ func normaliseList(list *unstructured.UnstructuredList) []listResourcesOutput {
 		res := listResourcesOutput{
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
+			Labels:    item.GetLabels(),
 			Status:    status,
 			Created:   item.GetCreationTimestamp().UTC().Format(time.DateTime),
 		}
