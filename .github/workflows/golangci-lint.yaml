@@ -29,14 +29,14 @@ jobs:
     name: lint
     runs-on:  ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v6.1.0
 
       - uses: actions/setup-go@v6.5.0
         with:
           go-version-file: './go.mod'
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9.2.1
+        uses: golangci/golangci-lint-action@v9.3.0
         with:
           # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
           version: v2.12.2
