@@ -68,9 +68,15 @@ Download a pre-built binary from [GitHub Releases](https://github.com/your-ko/mc
 # macOS Apple Silicon — change ARCH for other platforms: darwin-amd64, linux-amd64, linux-arm64
 ARCH=darwin-arm64
 VERSION=$(curl -fsSL https://api.github.com/repos/your-ko/mcp-k8s-ro/releases/latest | grep tag_name | cut -d'"' -f4)
-curl -fsSL "https://github.com/your-ko/mcp-k8s-ro/releases/download/${VERSION}/mcp-k8s-ro-${VERSION}-${ARCH}" -o ~/.local/bin/mcp-k8s-ro && chmod +x ~/.local/bin/mcp-k8s-ro
+curl -fsSL "https://github.com/your-ko/mcp-k8s-ro/releases/download/${VERSION}/mcp-k8s-ro-${VERSION}-${ARCH}" -o ~/.local/bin/mcp-k8s-ro
+chmod +x ~/.local/bin/mcp-k8s-ro
+xattr -d com.apple.quarantine ~/.local/bin/mcp-k8s-ro 2>/dev/null  # macOS only: remove Gatekeeper quarantine
 claude mcp add --scope user --transport stdio k8s-ro ~/.local/bin/mcp-k8s-ro
 ```
+
+> **macOS Gatekeeper**: The binary is not code-signed, so macOS will block it. 
+> The `xattr` command above removes the quarantine flag. Alternatively, go to System Settings → Privacy & Security and click "Allow Anyway" after the first blocked attempt.
+![img.png](img/img.png)
 
 Or build from source:
 
