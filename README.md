@@ -53,11 +53,11 @@ claude mcp add --scope user --transport stdio k8s-ro \
   -- docker run --rm -i -v ~/.kube:/home/nonroot/.kube:ro ghcr.io/your-ko/mcp-k8s-ro:latest
 ```
 
-Pinning a specific version is recommended for production use:
+Pinning a specific version (check the [latest release](https://github.com/your-ko/mcp-k8s-ro/releases/latest) ) is recommended for production use:
 
 ```bash
 claude mcp add --scope user --transport stdio k8s-ro \
-  -- docker run --rm -i -v ~/.kube:/home/nonroot/.kube:ro ghcr.io/your-ko/mcp-k8s-ro:0.1.0
+  -- docker run --rm -i -v ~/.kube:/home/nonroot/.kube:ro ghcr.io/your-ko/mcp-k8s-ro:1.1.0
 ```
 
 ### Binary
