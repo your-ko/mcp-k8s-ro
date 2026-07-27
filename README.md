@@ -46,75 +46,50 @@ A read-only MCP server that gives Claude access to Kubernetes clusters. Built in
 
 ## Usage with Claude
 
+### Docker (recommended)
+
+```bash
+claude mcp add --scope user --transport stdio k8s-ro \
+  -- docker run --rm -i -v ~/.kube:/home/nonroot/.kube:ro ghcr.io/your-ko/mcp-k8s-ro:latest
+```
+
+Pinning a specific version is recommended for production use:
+
+```bash
+claude mcp add --scope user --transport stdio k8s-ro \
+  -- docker run --rm -i -v ~/.kube:/home/nonroot/.kube:ro ghcr.io/your-ko/mcp-k8s-ro:0.1.0
+```
+
 ### Binary
 
-Build the binary and add it to your Claude Desktop or `claude` CLI configuration:
+Download a pre-built binary from [GitHub Releases](https://github.com/your-ko/mcp-k8s-ro/releases):
+
+```bash
+# macOS Apple Silicon — change ARCH for other platforms: darwin-amd64, linux-amd64, linux-arm64
+ARCH=darwin-arm64
+VERSION=$(curl -fsSL https://api.github.com/repos/your-ko/mcp-k8s-ro/releases/latest | grep tag_name | cut -d'"' -f4)
+curl -fsSL "https://github.com/your-ko/mcp-k8s-ro/releases/download/${VERSION}/mcp-k8s-ro-${VERSION}-${ARCH}" -o ~/.local/bin/mcp-k8s-ro && chmod +x ~/.local/bin/mcp-k8s-ro
+claude mcp add --scope user --transport stdio k8s-ro ~/.local/bin/mcp-k8s-ro
+```
+
+Or build from source:
 
 ```bash
 make build
-# binary is written to bin/mcp-k8s-ro
+claude mcp add --scope user --transport stdio k8s-ro ./bin/mcp-k8s-ro
 ```
 
-```json
-{
-  "mcpServers": {
-    "k8s": {
-      "type" : "stdio",
-      "command": "/path/to/bin/mcp-k8s-ro",
-      "env": {
-        "KUBECONFIG": "/path/to/.kube/config"
-      }
-    }
-  }
-}
-```
-Or via the CLI:
+### Custom kubeconfig location
+
+If your kubeconfig is not at `~/.kube/config`, set the `KUBECONFIG` environment variable:
 
 ```bash
-claude mcp add --transport stdio --scope user mcp-k8s-ro [path to binary]
-```
+# Binary
+claude mcp add --scope user --transport stdio -e KUBECONFIG=/path/to/kubeconfig k8s-ro ~/.local/bin/mcp-k8s-ro
 
-### Docker
-
-Pull the image from GitHub Container Registry (pinning a specific version is recommended):
-
-```bash
-docker pull ghcr.io/your-ko/mcp-k8s-ro:latest
-```
-
-Add it to your Claude Desktop or `claude` CLI configuration. The kubeconfig directory is mounted read-only into the container:
-
-```json
-{
-  "mcpServers": {
-    "k8s": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-v", "/path/to/.kube:/home/nonroot/.kube:ro",
-        "ghcr.io/your-ko/mcp-k8s-ro:latest"
-      ]
-    }
-  }
-}
-```
-
-If your kubeconfig is in a non-standard location, pass it via `KUBECONFIG`:
-
-```json
-{
-  "mcpServers": {
-    "k8s": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-e", "KUBECONFIG=/config/my-kubeconfig",
-        "-v", "/path/to/my-kubeconfig:/config/my-kubeconfig:ro",
-        "ghcr.io/your-ko/mcp-k8s-ro:latest"
-      ]
-    }
-  }
-}
+# Docker
+claude mcp add --scope user --transport stdio k8s-ro \
+  -- docker run --rm -i -e KUBECONFIG=/config/kubeconfig -v /path/to/kubeconfig:/config/kubeconfig:ro ghcr.io/your-ko/mcp-k8s-ro:latest
 ```
 
 ## Single-cluster design
