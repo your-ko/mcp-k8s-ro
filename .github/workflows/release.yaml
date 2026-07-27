@@ -64,17 +64,14 @@ jobs:
             -o mcp-k8s-ro \
             ./cmd/mcp-k8s-ro/
 
-      - name: Package artifact
-        run: |
-          ARCHIVE="mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.zip"
-          zip "$ARCHIVE" mcp-k8s-ro README.md LICENSE
-          echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
+      - name: Rename binary
+        run: mv mcp-k8s-ro mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7.0.1
         with:
           name: mcp-k8s-ro-${{ matrix.os }}-${{ matrix.arch }}
-          path: mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.zip
+          path: mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
 
   build-docker:
     runs-on: ubuntu-24.04
@@ -171,7 +168,7 @@ jobs:
 
       - name: Generate checksums
         run: |
-          find artifacts/ -name "*.zip" -exec sha256sum {} \; | sed 's|artifacts/[^/]*/||' > checksums.txt
+          find artifacts/ -type f -name "mcp-k8s-ro-*" -exec sha256sum {} \; | sed 's|artifacts/[^/]*/||' > checksums.txt
 
       - name: Sign checksums
         run: |
@@ -219,7 +216,7 @@ jobs:
             gh release create "$TAG" --generate-notes --latest
           fi
 
-          find artifacts/ -name "*.zip" | xargs gh release upload "$TAG" --clobber
+          find artifacts/ -type f -name "mcp-k8s-ro-*" | xargs gh release upload "$TAG" --clobber
           gh release upload "$TAG" checksums/checksums.txt checksums/checksums.txt.bundle --clobber
 
   publish-mcp:
