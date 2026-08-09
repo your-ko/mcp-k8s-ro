@@ -235,7 +235,7 @@ jobs:
       - name: Install mcp-publisher
         env:
           # renovate: datasource=github-releases depName=modelcontextprotocol/registry
-          MCP_PUBLISHER_VERSION: v1.8.0
+          MCP_PUBLISHER_VERSION: v1.8.1
         run: |
           OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
           ARCH="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
