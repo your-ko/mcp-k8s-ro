@@ -1,4 +1,4 @@
-FROM golang:1.26 AS builder
+FROM golang:1.27 AS builder
 
 ARG GIT_COMMIT=unknown
 ARG BUILD_DATE=unknown
