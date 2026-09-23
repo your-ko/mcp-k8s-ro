@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-binaries:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         include:
@@ -74,7 +74,7 @@ jobs:
           path: mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
 
   build-docker:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       digest: ${{ steps.docker.outputs.digest }}
     steps:
@@ -133,7 +133,7 @@ jobs:
 
   sign:
     # Cosign keyless signing uses Sigstore public Rekor log — requires public repo
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [ build-binaries, build-docker ]
     steps:
       - name: Login to GHCR
@@ -184,7 +184,7 @@ jobs:
             checksums.txt.bundle
 
   release:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [ sign ]
     steps:
       - uses: actions/checkout@v7.0.1
@@ -220,7 +220,7 @@ jobs:
           gh release upload "$TAG" checksums/checksums.txt checksums/checksums.txt.bundle --clobber
 
   publish-mcp:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [ release ]
     permissions:
       id-token: write # Required for OIDC authentication
