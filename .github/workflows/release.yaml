@@ -68,7 +68,7 @@ jobs:
         run: mv mcp-k8s-ro mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: mcp-k8s-ro-${{ matrix.os }}-${{ matrix.arch }}
           path: mcp-k8s-ro-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -161,7 +161,7 @@ jobs:
             --certificate-identity-regexp "^https://github.com/your-ko/mcp-k8s-ro/\.github/workflows/.*"
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           path: artifacts/
           pattern: mcp-k8s-ro-*
@@ -176,7 +176,7 @@ jobs:
             --bundle checksums.txt.bundle
 
       - name: Upload checksum artifacts
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: checksums
           path: |
@@ -190,13 +190,13 @@ jobs:
       - uses: actions/checkout@v7.0.1
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           path: artifacts/
           pattern: mcp-k8s-ro-*
 
       - name: Download checksum artifacts
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           path: checksums/
           pattern: checksums
