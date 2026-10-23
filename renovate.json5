@@ -93,7 +93,7 @@
       ],
       automerge: true,
       automergeType: 'pr',
-      automergeStrategy: 'merge',
+      automergeStrategy: 'rebase-merge',
       pruneBranchAfterAutomerge: true,
       commitMessagePrefix: 'chore(deps): ',
       commitMessageTopic: 'mcp-k8s-ro',
